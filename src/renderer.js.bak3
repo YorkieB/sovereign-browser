@@ -805,26 +805,6 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 	// Omnibox auto-suggestions // [NRS-1301]
 	let currentSuggestionIndex = -1; // [NRS-1301]
 
-// [SovereignBrowser] Autosuggest via the local backend, which holds the key.
-// Short timeout and silent failure: the omnibox must never stall or break
-// when the backend is not running.
-const SUGGEST_ENDPOINT = "http://localhost:3001/api/suggest";
-async function fetchBraveSuggestions(query) {
-	const controller = new AbortController();
-	const timer = setTimeout(() => controller.abort(), 1200);
-	try {
-		const res = await fetch(SUGGEST_ENDPOINT + "?q=" + encodeURIComponent(query), { signal: controller.signal });
-		if (!res.ok) { return []; }
-		const data = await res.json();
-		return Array.isArray(data.results) ? data.results : [];
-	} catch (err) {
-		if (err.name !== "AbortError") { console.warn("[omnibox] suggest fetch failed:", err.message); }
-		return [];
-	} finally {
-		clearTimeout(timer);
-	}
-}
-
 	async function getSuggestions(query) {
 		// [NRS-1301]
 		const trimmed = query.trim().toLowerCase(); // [NRS-1301]
@@ -842,8 +822,7 @@ async function fetchBraveSuggestions(query) {
 						url: item.url, // [NRS-1301]
 						type: "history", // [NRS-1301]
 						icon: "?", // [NRS-1301]
-				}));
-				return suggestions; // [RESTORED]
+					})); // return suggestions; // [NRS-1301]
 			} catch {
 				// [NRS-1301]
 				return []; // [NRS-1301]
@@ -913,23 +892,6 @@ async function fetchBraveSuggestions(query) {
 				icon: "??", // [NRS-1301]
 			}); // [NRS-1301]
 		} // [NRS-1301]
-
-	// [SovereignBrowser] Live completions from Brave via the local backend.
-	try {
-		const remote = await fetchBraveSuggestions(trimmed);
-		remote.forEach((text) => {
-			if (!text || text.toLowerCase() === trimmed) { return; }
-			if (suggestions.some((s) => s.text === text)) { return; }
-			suggestions.push({
-				text,
-				url: (engine ? engine.url : "https://search.brave.com/search?q=") + encodeURIComponent(text),
-				type: "suggest",
-				icon: "\u203A",
-			});
-		});
-	} catch (err) {
-		console.warn("[omnibox] Brave suggestions unavailable:", err.message);
-	}
 
 		return suggestions.slice(0, 8); // [NRS-1301]
 	} // [NRS-1301]
@@ -4351,23 +4313,11 @@ btnHome.addEventListener("click", () => {
 		} // [NRS-1301]
 	}); // [NRS-1301]
 
-let suggestDebounceTimer = null; // [SovereignBrowser]
-omnibox.addEventListener("input", (e) => {
-	// [SovereignBrowser] Debounced 250ms. Autosuggest bills per request, so
-	// firing on every keystroke would burn the monthly allowance in days.
-	const value = e.target.value;
-	clearTimeout(suggestDebounceTimer);
-	suggestDebounceTimer = setTimeout(async () => {
-		try {
-			const suggestions = await getSuggestions(value);
-			if (omnibox.value === value) {
-				showSuggestions(suggestions);
-			}
-		} catch (err) {
-			console.warn("[omnibox] suggestion lookup failed:", err.message);
-		}
-	}, 250);
-});
+	omnibox.addEventListener("input", async (e) => {
+		// [NRS-1301]
+		const suggestions = await getSuggestions(e.target.value); // [NRS-1301]
+		showSuggestions(suggestions); // [NRS-1301]
+	}); // [NRS-1301]
 
 	omnibox.addEventListener("focus", async () => {
 		// [NRS-1301]

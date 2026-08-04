@@ -1,4 +1,4 @@
 @echo off
-cd /d "C:\Users\conta\Webex\LightBrowser"
-npm start
-pause
+REM Superseded - use Start-SovereignBrowser.cmd
+call "%~dp0Start-SovereignBrowser.cmd"
+
