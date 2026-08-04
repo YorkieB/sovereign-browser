@@ -26,6 +26,12 @@ width:44px;height:44px;border-radius:50%;color:#fff;cursor:pointer;font-size:17p
 align-items:center;justify-content:center;transition:background .3s ease}
 .search-button:hover{background:#106ebe}
 .hint{margin-top:18px;font-size:13px;opacity:.55}
+.sugg{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border-radius:14px;
+box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden;text-align:left;z-index:20;display:none}
+.sugg.open{display:block}
+.sugg-item{padding:11px 20px;font-size:15px;color:#222;cursor:pointer;display:flex;gap:10px;align-items:center}
+.sugg-item:hover,.sugg-item.active{background:#eef3f7}
+.sugg-item .ic{opacity:.45;font-size:13px}
 .news-carousel{padding:40px 0;background:#1a1a1a}
 .carousel-container,.discover-container{max-width:1400px;margin:0 auto;padding:0 20px}
 .carousel-title,.discover-title{font-size:1.8rem;margin-bottom:20px}
@@ -77,6 +83,7 @@ background:linear-gradient(transparent,rgba(0,0,0,.8))}
     <input type="text" class="main-search-input" id="q"
            placeholder="Search the web privately..." aria-label="Search" autofocus>
     <button type="submit" class="search-button" aria-label="Search">&#8250;</button>
+    <div class="sugg" id="sugg" role="listbox"></div>
   </form>
   <p class="hint">Local file. Type a URL to go straight there.</p>
 </section>
@@ -117,8 +124,103 @@ function runSearch(value) {
 
 document.getElementById("searchForm").addEventListener("submit", function (e) {
   e.preventDefault();
+  closeSugg();
   runSearch(document.getElementById("q").value);
 });
+
+var qInput = document.getElementById("q");
+var suggBox = document.getElementById("sugg");
+var suggItems = [];
+var suggIndex = -1;
+var suggTimer = null;
+
+function closeSugg() {
+  suggBox.classList.remove("open");
+  suggBox.textContent = "";
+  suggItems = [];
+  suggIndex = -1;
+}
+
+function highlight(n) {
+  var nodes = suggBox.querySelectorAll(".sugg-item");
+  for (var i = 0; i < nodes.length; i++) { nodes[i].classList.toggle("active", i === n); }
+  suggIndex = n;
+}
+
+function drawSugg(list) {
+  suggBox.textContent = "";
+  if (!list.length) { closeSugg(); return; }
+  suggItems = list;
+  list.forEach(function (text, i) {
+    var row = document.createElement("div");
+    row.className = "sugg-item";
+    row.setAttribute("role", "option");
+    var ic = document.createElement("span");
+    ic.className = "ic";
+    ic.textContent = "\u2315";
+    var label = document.createElement("span");
+    label.textContent = text;
+    row.appendChild(ic);
+    row.appendChild(label);
+    row.addEventListener("mouseenter", function () { highlight(i); });
+    row.addEventListener("mousedown", function (ev) {
+      ev.preventDefault();
+      closeSugg();
+      runSearch(text);
+    });
+    suggBox.appendChild(row);
+  });
+  suggBox.classList.add("open");
+  suggIndex = -1;
+}
+
+function fetchSugg(query) {
+  var controller = new AbortController();
+  var timer = setTimeout(function () { controller.abort(); }, 1500);
+  fetch(API_BASE + "/api/suggest?q=" + encodeURIComponent(query), { signal: controller.signal })
+    .then(function (r) {
+      if (!r.ok) { throw new Error("suggest " + r.status); }
+      return r.json();
+    })
+    .then(function (data) {
+      if (qInput.value.trim() !== query) { return; }
+      drawSugg(Array.isArray(data.results) ? data.results.slice(0, 7) : []);
+    })
+    .catch(function (err) {
+      if (err.name !== "AbortError") { console.warn("[home] suggest unavailable:", err.message); }
+      closeSugg();
+    })
+    .finally(function () { clearTimeout(timer); });
+}
+
+qInput.addEventListener("input", function () {
+  var v = qInput.value.trim();
+  clearTimeout(suggTimer);
+  if (v.length < 2) { closeSugg(); return; }
+  suggTimer = setTimeout(function () { fetchSugg(v); }, 250);
+});
+
+qInput.addEventListener("keydown", function (e) {
+  if (!suggBox.classList.contains("open")) { return; }
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    highlight(suggIndex + 1 >= suggItems.length ? 0 : suggIndex + 1);
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    highlight(suggIndex - 1 < 0 ? suggItems.length - 1 : suggIndex - 1);
+  } else if (e.key === "Enter") {
+    if (suggIndex >= 0) {
+      e.preventDefault();
+      var chosen = suggItems[suggIndex];
+      closeSugg();
+      runSearch(chosen);
+    }
+  } else if (e.key === "Escape") {
+    closeSugg();
+  }
+});
+
+qInput.addEventListener("blur", function () { setTimeout(closeSugg, 120); });
 
 var DISCOVER = [
   { title: "Privacy Matters", subtitle: "Latest developments in digital privacy", size: "large",  tone: "g1" },
