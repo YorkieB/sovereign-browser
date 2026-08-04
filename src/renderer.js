@@ -4486,6 +4486,25 @@ omnibox.addEventListener("input", (e) => {
 		} // [NRS-1301]
 	}); // [NRS-1301]
 
+	// [SovereignBrowser] Clicks inside a <webview> never reach this document,
+	// because page content lives in a separate frame. The document click
+	// handler below therefore cannot catch "user clicked the page". Blur is
+	// the reliable signal: it fires whenever focus leaves the address bar,
+	// including into the webview. The delay lets a suggestion's click land
+	// first, since blur fires before click.
+	let suggestionBlurTimer = null;
+	omnibox.addEventListener("blur", () => {
+		clearTimeout(suggestionBlurTimer);
+		suggestionBlurTimer = setTimeout(hideSuggestions, 180);
+	});
+	omnibox.addEventListener("focus", () => {
+		clearTimeout(suggestionBlurTimer);
+	});
+	omniboxSuggestions.addEventListener("mousedown", (e) => {
+		// Keep focus in the omnibox while a suggestion is being clicked.
+		e.preventDefault();
+	});
+
 	document.addEventListener("click", (e) => {
 		// [NRS-1301]
 		// Don't hide suggestions if user clicked into an input/textarea // [NRS-1301]
