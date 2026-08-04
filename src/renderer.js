@@ -50,7 +50,6 @@ const OPENAI_API_KEY = "lm-studio"; // LM Studio ignores the value, header must 
 	const omnibox = document.getElementById("omnibox"); // [NRS-1302] Address bar input
 	const omniboxContainer = document.querySelector(".omnibox-container"); // [NRS-1302] Address bar container
 	const lockIcon = document.getElementById("lock-icon"); // [NRS-1302] HTTPS lock icon
-	const searchEngineSelector = document.getElementById("search-engine-selector"); // [NRS-1302] Search engine dropdown
 	const omniboxSuggestions = document.getElementById("omnibox-suggestions"); // [NRS-1302] URL suggestions list
 	const btnBack = document.getElementById("btn-back"); // [NRS-1303] Back navigation button
 	const btnForward = document.getElementById("btn-forward"); // [NRS-1303] Forward navigation button
@@ -63,7 +62,6 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 	const btnTabGroupA = document.getElementById("btn-tab-group-a"); // [NRS-1303] Tab group A button
 	const btnTabGroupB = document.getElementById("btn-tab-group-b"); // [NRS-1303] Tab group B button
 	const btnSplitView = document.getElementById("btn-split-view"); // [NRS-1303] Split view toggle
-	const btnToggleSidebar = document.getElementById("btn-toggle-sidebar"); // [NRS-1303] Sidebar toggle
 	const btnDevtools = document.getElementById("btn-devtools"); // [NRS-1303] DevTools button
 	const btnDevtoolsAuto = document.getElementById("btn-devtools-auto"); // [NRS-1303] Auto DevTools button
 	const btnJarvis = document.getElementById("btn-jarvis"); // [NRS-1001] Jarvis AI button
@@ -304,7 +302,8 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 
 	function extensionMatchesUrl(ext, url) {
 		// [NRS-1301]
-		if (!ext.matches || !Array.isArray(ext.matches)) return false; // return ext.matches.some(m => matchesPattern(url, m)); // [NRS-1301]
+		if (!ext.matches || !Array.isArray(ext.matches)) return false; // [NRS-1301]
+		return ext.matches.some(m => matchesPattern(url, m)); // [RESTORED]
 	} // [NRS-1301]
 
 	async function applyExtensionsToWebview(webview, url) {
@@ -340,7 +339,10 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 		bing: { name: "Bing", url: "https://www.bing.com/search?q=" }, // [NRS-1301]
 		google: { name: "Google", url: "https://www.google.com/search?q=" }, // [NRS-1301]
 		duckduckgo: { name: "DuckDuckGo", url: "https://duckduckgo.com/?q=" }, // [NRS-1301]
-	}; // let currentSearchEngine = 'bing'; // const SEARCH_ENGINE_KEY = 'lightbrowser.searchEngine'; // [NRS-1301]
+		brave: { name: "Brave", url: "https://search.brave.com/search?q=" }, // [SovereignBrowser]
+	};
+	let currentSearchEngine = "brave"; // [RESTORED] default changed from bing
+	const SEARCH_ENGINE_KEY = "lightbrowser.searchEngine"; // [RESTORED]
 
 	// Load saved search engine preference // [NRS-1301]
 	try {
@@ -349,7 +351,7 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 		if (saved && searchEngines[saved]) {
 			// [NRS-1301]
 			currentSearchEngine = saved; // [NRS-1301]
-			searchEngineSelector.value = saved; // [NRS-1301]
+			// [SovereignBrowser] selector UI removed; preference still honoured
 		} // [NRS-1301]
 	} catch {} // [NRS-1301]
 
@@ -446,7 +448,8 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 			return true; // [NRS-1301]
 		} catch (err) {
 			// [NRS-1301]
-			console.error("Failed to restore session:", err); // return false; // [NRS-1301]
+			console.error("Failed to restore session:", err); // [NRS-1301]
+			return false; // [RESTORED]
 		} // [NRS-1301]
 	} // [NRS-1301]
 
@@ -586,13 +589,15 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 
 	async function clearSiteDataForOrigin(origin) {
 		// [NRS-1301]
-		if (!origin) return "No site data to clear"; // const tab = tabs.find(t => t.id === activeTabId); // [NRS-1301]
+		if (!origin) return "No site data to clear"; // [NRS-1301]
+		const tab = tabs.find(t => t.id === activeTabId); // [RESTORED]
 		try {
 			// [NRS-1301]
 			const wc = tab?.webview?.getWebContents?.(); // [NRS-1301]
 			if (wc?.session) {
 				// [NRS-1301]
-				await wc.session.clearStorageData({ origin }); // await wc.session.clearCache(); // [NRS-1301]
+				await wc.session.clearStorageData({ origin }); // [NRS-1301]
+				await wc.session.clearCache(); // [RESTORED]
 			} // [NRS-1301]
 			tab?.webview?.reload?.(); // [NRS-1301]
 			return `Cleared data for ${origin}`; // [NRS-1301]
@@ -614,7 +619,8 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 			} // [NRS-1301]
 			for (const s of uniqueSessions) {
 				// [NRS-1301]
-				await s.clearStorageData(); // await s.clearCache(); // [NRS-1301]
+				await s.clearStorageData(); // [NRS-1301]
+				await s.clearCache(); // [RESTORED]
 			} // [NRS-1301]
 			try {
 				await globalThis.electronAPI?.history?.clear?.();
@@ -703,11 +709,13 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 
 	async function deleteSelectedCookies() {
 		// [NRS-1301]
-		const checkboxes = cookieList.querySelectorAll(".cookie-checkbox:checked"); // const cookies = await getAllCookies(); // [NRS-1301]
+		const checkboxes = cookieList.querySelectorAll(".cookie-checkbox:checked"); // [NRS-1301]
+		const cookies = await getAllCookies(); // [RESTORED]
 
 		for (const checkbox of checkboxes) {
 			// [NRS-1301]
-			const idx = parseInt(checkbox.dataset.index, 10); // const cookie = cookies[idx]; // [NRS-1301]
+			const idx = parseInt(checkbox.dataset.index, 10); // [NRS-1301]
+			const cookie = cookies[idx]; // [RESTORED]
 			if (cookie) {
 				// [NRS-1301]
 				try {
@@ -972,7 +980,8 @@ async function fetchBraveSuggestions(query) {
 			item.addEventListener("click", () => {
 				// [NRS-1301]
 				omnibox.value = suggestion.text; // [NRS-1301]
-				hideSuggestions(); // const tab = tabs.find(t => t.id === activeTabId); // [NRS-1301]
+				hideSuggestions(); // [NRS-1301]
+				const tab = tabs.find(t => t.id === activeTabId); // [RESTORED]
 				if (tab) {
 					// [NRS-1301]
 					setOmnibox(suggestion.url); // [NRS-1301]
@@ -1146,7 +1155,8 @@ async function fetchBraveSuggestions(query) {
 		// Give menu a chance to render, then check bounds // [NRS-1301]
 		setTimeout(() => {
 			// [NRS-1301]
-			const rect = webviewContextMenu.getBoundingClientRect(); // const padding = 4; // [NRS-1301]
+			const rect = webviewContextMenu.getBoundingClientRect(); // [NRS-1301]
+			const padding = 4; // [RESTORED]
 
 			// Check right boundary // [NRS-1301]
 			if (x + rect.width + padding > window.innerWidth) {
@@ -1267,7 +1277,8 @@ async function fetchBraveSuggestions(query) {
 	function updateFindBar() {
 		// [NRS-1301]
 		const tab = tabs.find((t) => t.id === activeTabId); // [NRS-1301]
-		if (!tab) return; // const searchText = findInput.value.trim(); // [NRS-1301]
+		if (!tab) return; // [NRS-1301]
+		const searchText = findInput.value.trim(); // [RESTORED]
 		if (!searchText) {
 			// [NRS-1301]
 			findCounter.textContent = "0 of 0"; // [NRS-1301]
@@ -1804,7 +1815,8 @@ btnHome.addEventListener("click", () => {
 				updateTabVisibility(); // [NRS-1301]
 				return; // [NRS-1301]
 			} // [NRS-1301]
-			const currentActive = activeTabId; // let other = tabs.find(t => t.id !== activeTabId); // [NRS-1301]
+			const currentActive = activeTabId; // [NRS-1301]
+			let other = tabs.find(t => t.id !== activeTabId); // [RESTORED]
 			if (!other) {
 				// [NRS-1301]
 				const newId = createTab(DEFAULT_HOME, { activate: false }); // [NRS-1301]
@@ -1816,11 +1828,6 @@ btnHome.addEventListener("click", () => {
 			updateTabVisibility(); // [NRS-1301]
 		}); // [NRS-1301]
 
-	// Toggle sidebar visibility // [NRS-1301]
-	btnToggleSidebar.addEventListener("click", () => {
-		// [NRS-1301]
-		document.body.classList.toggle("sidebar-hidden"); // [NRS-1301]
-	}); // [NRS-1301]
 
 	// Toggle devtools // [NRS-1301]
 	btnDevtools.addEventListener("click", () => {
@@ -1927,7 +1934,8 @@ btnHome.addEventListener("click", () => {
 		} catch (err) {
 			// [NRS-1301]
 			console.error("Mic permission request failed:", err); // [NRS-1301]
-			updateStatusBar(`? Mic permission error: ${err?.message || "Unknown error"}`); // return false; // [NRS-1301]
+			updateStatusBar(`? Mic permission error: ${err?.message || "Unknown error"}`); // [NRS-1301]
+			return false; // [RESTORED]
 		} // [NRS-1301]
 	} // [NRS-1301]
 
@@ -1942,7 +1950,8 @@ btnHome.addEventListener("click", () => {
 			const status = await globalThis.electronAPI?.mic?.status?.(); // [NRS-1301]
 			if (status?.status && status.status === "denied") {
 				// [NRS-1301]
-				updateStatusBar("? Mic permission denied by system"); // return false; // [NRS-1301]
+				updateStatusBar("? Mic permission denied by system"); // [NRS-1301]
+				return false; // [RESTORED]
 			} // [NRS-1301]
 
 			// Ask OS (macOS) and browsers // [NRS-1301]
@@ -1954,12 +1963,14 @@ btnHome.addEventListener("click", () => {
 				audio: { echoCancellation: true, noiseSuppression: true },
 			}); // [NRS-1301]
 			stream.getTracks().forEach((t) => t.stop()); // [NRS-1301]
-			micReady = true; // return true; // [NRS-1301]
+			micReady = true; // [NRS-1301]
+			return true; // [RESTORED]
 		} catch (err) {
 			// [NRS-1301]
 			console.error("Mic warmup failed:", err); // [NRS-1301]
 			logOverlay.show(`Mic warmup failed: ${err?.message || err}`); // [NRS-1301]
-			updateStatusBar(`? Mic error: ${err?.message || "Unknown error"}`); // return false; // [NRS-1301]
+			updateStatusBar(`? Mic error: ${err?.message || "Unknown error"}`); // [NRS-1301]
+			return false; // [RESTORED]
 		} // [NRS-1301]
 	} // [NRS-1301]
 
@@ -2018,7 +2029,8 @@ btnHome.addEventListener("click", () => {
 		try {
 			// [NRS-1301]
 			if (!skipUI) setListeningUI(true); // [NRS-1301]
-			updateStatusBar("?? Requesting mic..."); // const ok = await ensureMicPermissionAndWarmup(); // [NRS-1301]
+			updateStatusBar("?? Requesting mic..."); // [NRS-1301]
+			const ok = await ensureMicPermissionAndWarmup(); // [RESTORED]
 			if (!ok) {
 				// [NRS-1301]
 				setListeningUI(false); // [NRS-1301]
@@ -2072,7 +2084,8 @@ btnHome.addEventListener("click", () => {
 					clearTimeout(voiceTimeout); // [NRS-1301]
 					voiceTimeout = null; // [NRS-1301]
 				} // [NRS-1301]
-				if (!audioChunks.length) return; // const blob = new Blob(audioChunks, { type: 'audio/webm' }); // [NRS-1301]
+				if (!audioChunks.length) return; // [NRS-1301]
+				const blob = new Blob(audioChunks, { type: 'audio/webm' }); // [RESTORED]
 				transcribeBlob(blob); // [NRS-1301]
 			}; // [NRS-1301]
 
@@ -2166,7 +2179,8 @@ btnHome.addEventListener("click", () => {
 
 			recognition.onresult = (event) => {
 				// [NRS-1301]
-				let finalTranscript = ""; // let interimTranscript = ''; // [NRS-1301]
+				let finalTranscript = ""; // [NRS-1301]
+				let interimTranscript = ''; // [RESTORED]
 
 				for (let i = event.resultIndex; i < event.results.length; i++) {
 					// [NRS-1301]
@@ -2255,7 +2269,12 @@ btnHome.addEventListener("click", () => {
 			// [NRS-1301]
 			const result = await tab.webview.executeJavaScript(`
         (() => {
-          const title = document.title; // const url = window.location.href; // const bodyText = document.body.innerText.substring(0, 3000); // const headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(h => h.innerText).slice(0, 10); // const links = Array.from(document.querySelectorAll('a')).map(a => ({ text: a.innerText, href: a.href })).filter(a => a.href).slice(0, 10); // const images = Array.from(document.querySelectorAll('img')).map(img => ({
+          const title = document.title;
+          const url = window.location.href; // [RESTORED]
+          const bodyText = document.body.innerText.substring(0, 3000); // [RESTORED]
+          const headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(h => h.innerText).slice(0, 10); // [RESTORED]
+          const links = Array.from(document.querySelectorAll('a')).map(a => ({ text: a.innerText, href: a.href })).filter(a => a.href).slice(0, 10); // [RESTORED]
+          const images = Array.from(document.querySelectorAll('img')).map(img => ({ // [RESTORED]
             alt: img.alt || '',
             src: img.src,
             width: img.naturalWidth || img.width || null,
@@ -2275,7 +2294,8 @@ btnHome.addEventListener("click", () => {
 			return result; // [NRS-1301]
 		} catch (error) {
 			// [NRS-1301]
-			console.error("Failed to extract page content:", error); // return null; // [NRS-1301]
+			console.error("Failed to extract page content:", error); // [NRS-1301]
+			return null; // [RESTORED]
 		} // [NRS-1301]
 	} // [NRS-1301]
 
@@ -2310,7 +2330,8 @@ btnHome.addEventListener("click", () => {
             const forms = Array.from(document.querySelectorAll('form')); // [NRS-1301]
 
             // Also look for input fields that might not be in a form element
-            const standaloneInputs = Array.from(document.querySelectorAll('input:not(form input), textarea:not(form textarea), select:not(form select)')); // let allForms = forms.map((form, formIndex) => {
+            const standaloneInputs = Array.from(document.querySelectorAll('input:not(form input), textarea:not(form textarea), select:not(form select)'));
+            let allForms = forms.map((form, formIndex) => { // [RESTORED]
               const fields = Array.from(form.querySelectorAll('input, textarea, select')).map((field, fieldIndex) => ({
                 type: field.type || field.tagName.toLowerCase(),
                 name: field.name,
@@ -2320,7 +2341,8 @@ btnHome.addEventListener("click", () => {
                   const label = field.labels?.[0] ||
                                document.querySelector(\`label[for="\${field.id}"]\`) ||
                                field.closest('div')?.querySelector('label') ||
-                               field.previousElementSibling?.tagName === 'LABEL' ? field.previousElementSibling : null; // return label?.textContent?.trim() || field.placeholder || field.name || '';
+                               field.previousElementSibling?.tagName === 'LABEL' ? field.previousElementSibling : null;
+                               return label?.textContent?.trim() || field.placeholder || field.name || ''; // [RESTORED]
                 })(),
                 required: field.required,
                 value: field.value,
@@ -2352,7 +2374,8 @@ btnHome.addEventListener("click", () => {
                   const label = field.labels?.[0] ||
                                document.querySelector(\`label[for="\${field.id}"]\`) ||
                                field.closest('div')?.querySelector('label') ||
-                               field.previousElementSibling?.tagName === 'LABEL' ? field.previousElementSibling : null; // return label?.textContent?.trim() || field.placeholder || field.name || '';
+                               field.previousElementSibling?.tagName === 'LABEL' ? field.previousElementSibling : null;
+                               return label?.textContent?.trim() || field.placeholder || field.name || ''; // [RESTORED]
                 })(),
                 required: field.required,
                 value: field.value,
@@ -2437,7 +2460,8 @@ btnHome.addEventListener("click", () => {
               const fields = document.querySelectorAll(testSelector);
               for (const testField of fields) {
                 // Check if field is visible and interactive
-                const rect = testField.getBoundingClientRect(); // const style = window.getComputedStyle(testField);
+                const rect = testField.getBoundingClientRect();
+                const style = window.getComputedStyle(testField); // [RESTORED]
 
                 if (testField.offsetParent !== null &&
                     style.display !== 'none' &&
@@ -2455,7 +2479,8 @@ btnHome.addEventListener("click", () => {
             }
 
             if (!field) {
-              console.log('No suitable input field found'); // return false;
+              console.log('No suitable input field found');
+              return false; // [RESTORED]
             }
           }
 
@@ -2489,15 +2514,19 @@ btnHome.addEventListener("click", () => {
 
             }, 10);
 
-            console.log('Successfully filled field:', field); // return true;
+            console.log('Successfully filled field:', field);
+            return true; // [RESTORED]
           } catch (err) {
-            console.error('Error filling field:', err); // return false;
+            console.error('Error filling field:', err);
+            return false; // [RESTORED]
           }
         })();
-      `); // return result;
+      `);
+      return result; // [RESTORED]
 		} catch (error) {
 			// [NRS-1301]
-			console.error("Failed to fill form field:", error); // return false; // [NRS-1301]
+			console.error("Failed to fill form field:", error); // [NRS-1301]
+			return false; // [RESTORED]
 		} // [NRS-1301]
 	} // [NRS-1301]
 
@@ -2514,17 +2543,21 @@ btnHome.addEventListener("click", () => {
           if (forms[${formIndex}]) {
             const submitButton = forms[${formIndex}].querySelector('button[type="submit"], input[type="submit"]');
             if (submitButton) {
-              submitButton.click(); // return true;
+              submitButton.click();
+              return true; // [RESTORED]
             } else {
-              forms[${formIndex}].submit(); // return true;
+              forms[${formIndex}].submit();
+              return true; // [RESTORED]
             }
           }
           return false;
         })();
-      `); // return result;
+      `);
+      return result; // [RESTORED]
 		} catch (error) {
 			// [NRS-1301]
-			console.error("Failed to submit form:", error); // return false; // [NRS-1301]
+			console.error("Failed to submit form:", error); // [NRS-1301]
+			return false; // [RESTORED]
 		} // [NRS-1301]
 	} // [NRS-1301]
 
@@ -2608,7 +2641,8 @@ btnHome.addEventListener("click", () => {
             for (const sel of clickableSelectors) {
               const elements = document.querySelectorAll(sel);
               for (const el of elements) {
-                const rect = el.getBoundingClientRect(); // const style = window.getComputedStyle(el);
+                const rect = el.getBoundingClientRect();
+                const style = window.getComputedStyle(el); // [RESTORED]
 
                 // Check if element is visible and interactive
                 if (el.offsetParent !== null &&
@@ -2671,7 +2705,8 @@ btnHome.addEventListener("click", () => {
             message: 'Clicked element: ' + (element.textContent?.substring(0, 50) || element.tagName)
           };
         })();
-      `); // return result;
+      `);
+      return result; // [RESTORED]
 		} catch (error) {
 			// [NRS-1301]
 			console.error("Failed to click element:", error); // [NRS-1301]
@@ -2737,7 +2772,8 @@ btnHome.addEventListener("click", () => {
 
           // If not found, search by label, placeholder, or name
           if (!field) {
-            const searchText = '${fieldLabel}' || '${selector}'; // const inputSelectors = [
+            const searchText = '${fieldLabel}' || '${selector}';
+            const inputSelectors = [; // [RESTORED]
               'input[type="text"]',
               'input[type="email"]',
               'input[type="password"]',
@@ -2751,7 +2787,8 @@ btnHome.addEventListener("click", () => {
             for (const sel of inputSelectors) {
               const inputs = document.querySelectorAll(sel);
               for (const input of inputs) {
-                const rect = input.getBoundingClientRect(); // const style = window.getComputedStyle(input);
+                const rect = input.getBoundingClientRect();
+                const style = window.getComputedStyle(input); // [RESTORED]
 
                 // Check if field is visible and interactive
                 if (input.offsetParent !== null &&
@@ -2889,7 +2926,8 @@ btnHome.addEventListener("click", () => {
 		thinkingEl.style.opacity = "0.7"; // [NRS-1301]
 		thinkingEl.style.fontStyle = "italic"; // [NRS-1301]
 		jarvisMessages.appendChild(thinkingEl); // [NRS-1301]
-		jarvisMessages.scrollTop = jarvisMessages.scrollHeight; // return thinkingEl; // [NRS-1301]
+		jarvisMessages.scrollTop = jarvisMessages.scrollHeight; // [NRS-1301]
+		return thinkingEl; // [RESTORED]
 	} // [NRS-1301]
 
 	function updateTaskStatus(taskId, status, result = null) {
@@ -2913,7 +2951,11 @@ btnHome.addEventListener("click", () => {
 
 	function getTaskSummary() {
 		// [NRS-1301]
-		const totalTasks = currentTasks.length; // const completed = completedTasks.length; // const pending = currentTasks.filter(t => t.status === 'pending').length; // const inProgress = currentTasks.filter(t => t.status === 'in-progress').length; // let summary = `?? Task Summary:\n`;
+		const totalTasks = currentTasks.length;
+		const completed = completedTasks.length; // [RESTORED]
+		const pending = currentTasks.filter(t => t.status === 'pending').length; // [RESTORED]
+		const inProgress = currentTasks.filter(t => t.status === 'in-progress').length; // [RESTORED]
+		let summary = `?? Task Summary:\n`; // [RESTORED]
 		summary += `Total Tasks: ${totalTasks}\n`; // [NRS-1301]
 		summary += `Completed: ${completed}\n`; // [NRS-1301]
 		summary += `In Progress: ${inProgress}\n`; // [NRS-1301]
@@ -2970,7 +3012,8 @@ btnHome.addEventListener("click", () => {
 
 	async function executeNextTaskAutomatically() {
 		// [NRS-1301]
-		addJarvisThinking("?? Checking for next task to execute..."); // const nextTask = currentTasks.find(t => t.status === 'pending'); // [NRS-1301]
+		addJarvisThinking("?? Checking for next task to execute..."); // [NRS-1301]
+		const nextTask = currentTasks.find(t => t.status === 'pending'); // [RESTORED]
 		if (!nextTask) {
 			// [NRS-1301]
 			addJarvisThinking("? No pending tasks found"); // [NRS-1301]
@@ -2981,7 +3024,9 @@ btnHome.addEventListener("click", () => {
 
 		// Mark task as started // [NRS-1301]
 		updateTaskStatus(nextTask.id, "in-progress"); // [NRS-1301]
-		addJarvisThinking(`?? Task ${nextTask.id} marked as IN PROGRESS`); // let result = 'Task executed automatically'; // let success = true; // [NRS-1301]
+		addJarvisThinking(`?? Task ${nextTask.id} marked as IN PROGRESS`); // [NRS-1301]
+		let result = 'Task executed automatically'; // [RESTORED]
+		let success = true; // [RESTORED]
 
 		try {
 			// [NRS-1301]
@@ -2990,7 +3035,8 @@ btnHome.addEventListener("click", () => {
 
 			if (taskDesc.includes("navigate")) {
 				// [NRS-1301]
-				addJarvisThinking("?? This is a NAVIGATION task"); // const urlMatch = nextTask.description.match(/(https?:\/\/[^\s]+|[\w.-]+\.[a-z]{2,}|demoqa\.com)/i); // [NRS-1301]
+				addJarvisThinking("?? This is a NAVIGATION task"); // [NRS-1301]
+				const urlMatch = nextTask.description.match(/(https?:\/\/[^\s]+|[\w.-]+\.[a-z]{2,}|demoqa\.com)/i); // [RESTORED]
 				if (urlMatch) {
 					// [NRS-1301]
 					let url = urlMatch[0]; // [NRS-1301]
@@ -3007,7 +3053,8 @@ btnHome.addEventListener("click", () => {
 						addJarvisThinking(`? Navigation result: ${result}`); // [NRS-1301]
 
 						// Wait for page to load // [NRS-1301]
-						addJarvisThinking("? Waiting 4 seconds for page to load..."); // await new Promise(resolve => setTimeout(resolve, 4000)); // [NRS-1301]
+						addJarvisThinking("? Waiting 4 seconds for page to load..."); // [NRS-1301]
+						await new Promise(resolve => setTimeout(resolve, 4000)); // [RESTORED]
 						addJarvisThinking("? Page load wait complete"); // [NRS-1301]
 
 						success = true; // [NRS-1301]
@@ -3069,17 +3116,24 @@ btnHome.addEventListener("click", () => {
 
 						if (formsData.forms && formsData.forms.length > 0) {
 							// [NRS-1301]
-							const form = formsData.forms[0]; // const fields = []; // [NRS-1301]
+							const form = formsData.forms[0]; // [NRS-1301]
+							const fields = []; // [RESTORED]
 
 							// Extract data from task description // [NRS-1301]
-							const emailMatch = nextTask.description.match(/([\w.-]+@[\w.-]+\.[a-z]{2,})/i); // const phoneMatch = nextTask.description.match(/phone[:\s]*(\d{10,})/i); // const nameMatches = nextTask.description.match(/name[:\s]*([a-zA-Z\s]+)/i); // const firstNameMatch = nextTask.description.match(/first\s*name[:\s]*([a-zA-Z]+)/i); // const lastNameMatch = nextTask.description.match(/last\s*name[:\s]*([a-zA-Z]+)/i); // [NRS-1301]
+							const emailMatch = nextTask.description.match(/([\w.-]+@[\w.-]+\.[a-z]{2,})/i); // [NRS-1301]
+							const phoneMatch = nextTask.description.match(/phone[:\s]*(\d{10,})/i); // [RESTORED]
+							const nameMatches = nextTask.description.match(/name[:\s]*([a-zA-Z\s]+)/i); // [RESTORED]
+							const firstNameMatch = nextTask.description.match(/first\s*name[:\s]*([a-zA-Z]+)/i); // [RESTORED]
+							const lastNameMatch = nextTask.description.match(/last\s*name[:\s]*([a-zA-Z]+)/i); // [RESTORED]
 
 							addJarvisThinking(`Found ${form.fields.length} form fields to process`); // [NRS-1301]
 
 							// Fill available form fields // [NRS-1301]
 							for (const field of form.fields) {
 								// [NRS-1301]
-								const fieldType = field.type?.toLowerCase(); // const fieldName = field.name?.toLowerCase() || ''; // const fieldLabel = field.label?.toLowerCase() || ''; // [NRS-1301]
+								const fieldType = field.type?.toLowerCase(); // [NRS-1301]
+								const fieldName = field.name?.toLowerCase() || ''; // [RESTORED]
+								const fieldLabel = field.label?.toLowerCase() || ''; // [RESTORED]
 
 								if (
 									(fieldType === "email" ||
@@ -3216,7 +3270,8 @@ btnHome.addEventListener("click", () => {
 		// [NRS-1301]
 		open_new_tab: (args) => {
 			// [NRS-1301]
-			showJarvisSwirl(); // const url = args.url || DEFAULT_HOME; // [NRS-1301]
+			showJarvisSwirl(); // [NRS-1301]
+			const url = args.url || DEFAULT_HOME; // [RESTORED]
 			setTimeout(() => {
 				// [NRS-1301]
 				createTab(url); // [NRS-1301]
@@ -3327,11 +3382,14 @@ btnHome.addEventListener("click", () => {
 		}, // [NRS-1301]
 		submit_form: async (args) => {
 			// [NRS-1301]
-			const formIndex = args.form_index || 0; // const success = await submitForm(formIndex); // return success ? `Form ${formIndex + 1} submitted successfully` : 'Failed to submit form';
+			const formIndex = args.form_index || 0;
+			const success = await submitForm(formIndex); // [RESTORED]
+			return success ? `Form ${formIndex + 1} submitted successfully` : 'Failed to submit form'; // [RESTORED]
 		}, // [NRS-1301]
 		click_element: async (args) => {
 			// [NRS-1301]
-			const { selector, text } = args; // const result = await clickElement(selector || '', text || ''); // [NRS-1301]
+			const { selector, text } = args; // [NRS-1301]
+			const result = await clickElement(selector || '', text || ''); // [RESTORED]
 			if (result?.success) {
 				// [NRS-1301]
 				return result.message || "Element clicked successfully"; // [NRS-1301]
@@ -3368,7 +3426,8 @@ btnHome.addEventListener("click", () => {
 						executeNextTaskAutomatically(); // [NRS-1301]
 					} // [NRS-1301]
 				} // [NRS-1301]
-			}, 200); // return result; // [NRS-1301]
+			}, 200); // [NRS-1301]
+			return result; // [RESTORED]
 		}, // [NRS-1301]
 		show_thinking: (args) => {
 			// [NRS-1301]
@@ -3378,7 +3437,8 @@ btnHome.addEventListener("click", () => {
 		}, // [NRS-1301]
 		start_task: (args) => {
 			// [NRS-1301]
-			const { task_id } = args; // const task = updateTaskStatus(task_id, 'in-progress'); // [NRS-1301]
+			const { task_id } = args; // [NRS-1301]
+			const task = updateTaskStatus(task_id, 'in-progress'); // [RESTORED]
 			if (task) {
 				// [NRS-1301]
 				addJarvisThinking(`Starting task ${task_id}: ${task.description}`); // [NRS-1301]
@@ -3388,7 +3448,8 @@ btnHome.addEventListener("click", () => {
 		}, // [NRS-1301]
 		complete_task: (args) => {
 			// [NRS-1301]
-			const { task_id, result } = args; // const task = updateTaskStatus(task_id, 'completed', result); // [NRS-1301]
+			const { task_id, result } = args; // [NRS-1301]
+			const task = updateTaskStatus(task_id, 'completed', result); // [RESTORED]
 			if (task) {
 				// [NRS-1301]
 				addJarvisThinking(`Completed task ${task_id}: ${task.description}`); // [NRS-1301]
@@ -3398,7 +3459,8 @@ btnHome.addEventListener("click", () => {
 		}, // [NRS-1301]
 		get_current_tasks: () => {
 			// [NRS-1301]
-			if (currentTasks.length === 0) return "No active tasks"; // let taskList = 'Current Tasks:\n'; // [NRS-1301]
+			if (currentTasks.length === 0) return "No active tasks"; // [NRS-1301]
+			let taskList = 'Current Tasks:\n'; // [RESTORED]
 			currentTasks.forEach((task) => {
 				// [NRS-1301]
 				const status =
@@ -3408,7 +3470,8 @@ btnHome.addEventListener("click", () => {
 							? "??"
 							: "?"; // [NRS-1301]
 				taskList += `${status} ${task.id}. ${task.description} (${task.status})\n`; // [NRS-1301]
-			}); // return taskList; // [NRS-1301]
+			}); // [NRS-1301]
+			return taskList; // [RESTORED]
 		}, // [NRS-1301]
 		get_task_summary: () => {
 			// [NRS-1301]
@@ -3416,23 +3479,32 @@ btnHome.addEventListener("click", () => {
 		}, // [NRS-1301]
 		fill_email_field: async (args) => {
 			// [NRS-1301]
-			const { email } = args; // const result = await clickAndTypeInField('', email, 'email'); // return result && result.success ? result.message : `Email field interaction attempted - trying alternative selectors`;
+			const { email } = args;
+			const result = await clickAndTypeInField('', email, 'email'); // [RESTORED]
+			return result && result.success ? result.message : `Email field interaction attempted - trying alternative selectors`; // [RESTORED]
 		}, // [NRS-1301]
 		fill_password_field: async (args) => {
 			// [NRS-1301]
-			const { password } = args; // const result = await clickAndTypeInField('', password, 'password'); // return result && result.success ? result.message : `Password field interaction attempted - trying alternative selectors`;
+			const { password } = args;
+			const result = await clickAndTypeInField('', password, 'password'); // [RESTORED]
+			return result && result.success ? result.message : `Password field interaction attempted - trying alternative selectors`; // [RESTORED]
 		}, // [NRS-1301]
 		fill_name_field: async (args) => {
 			// [NRS-1301]
-			const { name, field_type = "name" } = args; // const result = await clickAndTypeInField('', name, field_type); // return result && result.success ? result.message : `Name field interaction attempted - trying alternative selectors for ${field_type}`;
+			const { name, field_type = "name" } = args;
+			const result = await clickAndTypeInField('', name, field_type); // [RESTORED]
+			return result && result.success ? result.message : `Name field interaction attempted - trying alternative selectors for ${field_type}`; // [RESTORED]
 		}, // [NRS-1301]
 		fill_phone_field: async (args) => {
 			// [NRS-1301]
-			const { phone } = args; // const result = await clickAndTypeInField('', phone, 'phone'); // return result && result.success ? result.message : `Phone field interaction attempted - trying alternative selectors`;
+			const { phone } = args;
+			const result = await clickAndTypeInField('', phone, 'phone'); // [RESTORED]
+			return result && result.success ? result.message : `Phone field interaction attempted - trying alternative selectors`; // [RESTORED]
 		}, // [NRS-1301]
 		smart_fill_form: async (args) => {
 			// [NRS-1301]
-			const { data } = args; // const results = []; // [NRS-1301]
+			const { data } = args; // [NRS-1301]
+			const results = []; // [RESTORED]
 
 			// Smart form filling based on provided data // [NRS-1301]
 			if (data.email) {
@@ -3495,13 +3567,16 @@ btnHome.addEventListener("click", () => {
 				}); // [NRS-1301]
 			} // [NRS-1301]
 
-			const successCount = results.filter((r) => r.success).length; // const totalCount = results.length; // [NRS-1301]
+			const successCount = results.filter((r) => r.success).length; // [NRS-1301]
+			const totalCount = results.length; // [RESTORED]
 
 			return `Smart form filling completed: ${successCount}/${totalCount} fields filled successfully`; // [NRS-1301]
 		}, // [NRS-1301]
 		type_in_search_box: async (args) => {
 			// [NRS-1301]
-			const { query } = args; // const result = await clickAndTypeInField('', query, 'search'); // return result && result.success ? result.message : `Search interaction attempted - trying alternative search selectors`;
+			const { query } = args;
+			const result = await clickAndTypeInField('', query, 'search'); // [RESTORED]
+			return result && result.success ? result.message : `Search interaction attempted - trying alternative search selectors`; // [RESTORED]
 		}, // [NRS-1301]
 		search_and_submit: async (args) => {
 			// [NRS-1301]
@@ -4360,7 +4435,8 @@ btnHome.addEventListener("click", () => {
 
 		if (e.key === "Enter") {
 			// [NRS-1301]
-			const url = normalizeUrl(omnibox.value); // const tab = tabs.find(t => t.id === activeTabId); // [NRS-1301]
+			const url = normalizeUrl(omnibox.value); // [NRS-1301]
+			const tab = tabs.find(t => t.id === activeTabId); // [RESTORED]
 			if (tab) tab.webview.addEventListener("did-fail-load", (ev) => {
 	globalThis.electronAPI?.invoke?.("sb:log", "did-fail-load", ev.errorCode, ev.errorDescription, ev.validatedURL);
 });
@@ -4372,7 +4448,8 @@ webview.src = url; // [NRS-1301]
 			hideSuggestions(); // [NRS-1301]
 		} else if (e.key === "ArrowDown") {
 			// [NRS-1301]
-			e.preventDefault(); // const items = omniboxSuggestions.querySelectorAll('.suggestion-item'); // [NRS-1301]
+			e.preventDefault(); // [NRS-1301]
+			const items = omniboxSuggestions.querySelectorAll('.suggestion-item'); // [RESTORED]
 			if (items.length) {
 				// [NRS-1301]
 				currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, items.length - 1); // [NRS-1301]
@@ -4432,19 +4509,13 @@ omnibox.addEventListener("input", (e) => {
 		} // [NRS-1301]
 	}); // [NRS-1301]
 
-	searchEngineSelector.addEventListener("change", (e) => {
-		// [NRS-1301]
-		currentSearchEngine = e.target.value; // [NRS-1301]
-		try {
-			// [NRS-1301]
-			localStorage.setItem(SEARCH_ENGINE_KEY, currentSearchEngine); // [NRS-1301]
-		} catch {} // [NRS-1301]
-	}); // [NRS-1301]
 
 	btnBookmark.addEventListener("click", async () => {
 		// [NRS-1301]
 		const tab = tabs.find((t) => t.id === activeTabId); // [NRS-1301]
-		if (!tab) return; // const url = tab.webview.getURL?.() || tab.webview.src || ''; // const title = tab.titleEl.textContent || url; // [NRS-1301]
+		if (!tab) return; // [NRS-1301]
+		const url = tab.webview.getURL?.() || tab.webview.src || ''; // [RESTORED]
+		const title = tab.titleEl.textContent || url; // [RESTORED]
 		try {
 			// [NRS-1301]
 			await globalThis.electronAPI.bookmarks.add({ title, url }); // [NRS-1301]
@@ -4597,26 +4668,37 @@ omnibox.addEventListener("input", (e) => {
 		for (const ext of extensions) {
 			// [NRS-1301]
 			const item = document.createElement("div"); // [NRS-1301]
-			item.className = "extension-card"; // const header = document.createElement('div'); // [NRS-1301]
-			header.className = "extension-header"; // const icon = document.createElement('div'); // [NRS-1301]
+			item.className = "extension-card"; // [NRS-1301]
+			const header = document.createElement('div'); // [RESTORED]
+			header.className = "extension-header"; // [NRS-1301]
+			const icon = document.createElement('div'); // [RESTORED]
 			icon.className = "extension-icon"; // [NRS-1301]
-			icon.textContent = getExtensionIcon(ext); // const titleWrap = document.createElement('div'); // [NRS-1301]
-			titleWrap.className = "extension-title-wrap"; // const name = document.createElement('div'); // [NRS-1301]
+			icon.textContent = getExtensionIcon(ext); // [NRS-1301]
+			const titleWrap = document.createElement('div'); // [RESTORED]
+			titleWrap.className = "extension-title-wrap"; // [NRS-1301]
+			const name = document.createElement('div'); // [RESTORED]
 			name.className = "extension-name"; // [NRS-1301]
-			name.textContent = ext.name; // const subtitle = document.createElement('div'); // [NRS-1301]
+			name.textContent = ext.name; // [NRS-1301]
+			const subtitle = document.createElement('div'); // [RESTORED]
 			subtitle.className = "extension-subtitle"; // [NRS-1301]
 			subtitle.textContent = (ext.matches || []).join(", ") || "All sites"; // [NRS-1301]
 			titleWrap.appendChild(name); // [NRS-1301]
 			titleWrap.appendChild(subtitle); // [NRS-1301]
 			header.appendChild(icon); // [NRS-1301]
-			header.appendChild(titleWrap); // const desc = document.createElement('div'); // [NRS-1301]
+			header.appendChild(titleWrap); // [NRS-1301]
+			const desc = document.createElement('div'); // [RESTORED]
 			desc.className = "extension-desc"; // [NRS-1301]
-			desc.textContent = ext.description || "No description provided."; // const meta = document.createElement('div'); // [NRS-1301]
+			desc.textContent = ext.description || "No description provided."; // [NRS-1301]
+			const meta = document.createElement('div'); // [RESTORED]
 			meta.className = "extension-meta"; // [NRS-1301]
-			meta.textContent = `ID: ${ext.id}`; // const actions = document.createElement('div'); // [NRS-1301]
-			actions.className = "extension-actions"; // const leftActions = document.createElement('div'); // [NRS-1301]
-			leftActions.className = "extension-actions-left"; // const rightActions = document.createElement('div'); // [NRS-1301]
-			rightActions.className = "extension-actions-right"; // const detailsBtn = document.createElement('button'); // [NRS-1301]
+			meta.textContent = `ID: ${ext.id}`; // [NRS-1301]
+			const actions = document.createElement('div'); // [RESTORED]
+			actions.className = "extension-actions"; // [NRS-1301]
+			const leftActions = document.createElement('div'); // [RESTORED]
+			leftActions.className = "extension-actions-left"; // [NRS-1301]
+			const rightActions = document.createElement('div'); // [RESTORED]
+			rightActions.className = "extension-actions-right"; // [NRS-1301]
+			const detailsBtn = document.createElement('button'); // [RESTORED]
 			detailsBtn.className = "setting-btn"; // [NRS-1301]
 			detailsBtn.textContent = "Details"; // [NRS-1301]
 			detailsBtn.addEventListener("click", () => {
@@ -4628,7 +4710,8 @@ omnibox.addEventListener("input", (e) => {
 				extCssInput.value = ext.css || ""; // [NRS-1301]
 				extJsInput.value = ext.js || ""; // [NRS-1301]
 				extensionEditorModal.classList.add("open"); // [NRS-1301]
-			}); // const removeBtn = document.createElement('button'); // [NRS-1301]
+			}); // [NRS-1301]
+			const removeBtn = document.createElement('button'); // [RESTORED]
 			removeBtn.className = "extension-remove"; // [NRS-1301]
 			removeBtn.textContent = "Remove"; // [NRS-1301]
 			removeBtn.addEventListener("click", () => {
@@ -4639,7 +4722,8 @@ omnibox.addEventListener("input", (e) => {
 				showSuccess("Extension removed"); // [NRS-1301]
 				updateExtensionsCount(); // [NRS-1301]
 				updatePinnedExtensionsUI(); // [NRS-1301]
-			}); // const pinBtn = document.createElement('button'); // [NRS-1301]
+			}); // [NRS-1301]
+			const pinBtn = document.createElement('button'); // [RESTORED]
 			pinBtn.className = "extension-pin"; // [NRS-1301]
 			pinBtn.textContent = ext.pinned ? "??" : "??"; // [NRS-1301]
 			pinBtn.title = ext.pinned ? "Unpin to Add-on Bar" : "Pin to Add-on Bar"; // [NRS-1301]
@@ -4649,10 +4733,13 @@ omnibox.addEventListener("input", (e) => {
 				saveExtensions(); // [NRS-1301]
 				updatePinnedExtensionsUI(); // [NRS-1301]
 				renderExtensions(); // [NRS-1301]
-			}); // const toggleWrap = document.createElement('label'); // [NRS-1301]
-			toggleWrap.className = "switch"; // const toggle = document.createElement('input'); // [NRS-1301]
+			}); // [NRS-1301]
+			const toggleWrap = document.createElement('label'); // [RESTORED]
+			toggleWrap.className = "switch"; // [NRS-1301]
+			const toggle = document.createElement('input'); // [RESTORED]
 			toggle.type = "checkbox"; // [NRS-1301]
-			toggle.checked = !!ext.enabled; // const slider = document.createElement('span'); // [NRS-1301]
+			toggle.checked = !!ext.enabled; // [NRS-1301]
+			const slider = document.createElement('span'); // [RESTORED]
 			slider.className = "slider round"; // [NRS-1301]
 			toggle.addEventListener("change", () => {
 				// [NRS-1301]
@@ -4760,7 +4847,10 @@ omnibox.addEventListener("input", (e) => {
 	if (btnSaveExtension)
 		btnSaveExtension.addEventListener("click", () => {
 			// [NRS-1301]
-			const name = extNameInput.value.trim() || "Untitled Extension"; // const matches = extMatchesInput.value.split(',').map(s => s.trim()).filter(Boolean); // const css = extCssInput.value; // const js = extJsInput.value; // [NRS-1301]
+			const name = extNameInput.value.trim() || "Untitled Extension"; // [NRS-1301]
+			const matches = extMatchesInput.value.split(',').map(s => s.trim()).filter(Boolean); // [RESTORED]
+			const css = extCssInput.value; // [RESTORED]
+			const js = extJsInput.value; // [RESTORED]
 
 			if (editingExtensionId) {
 				// [NRS-1301]
@@ -4856,7 +4946,12 @@ omnibox.addEventListener("input", (e) => {
 				showError("manifest.json not found");
 				return;
 			} // [NRS-1301]
-			const manifestText = await manifestFile.text(); // const manifest = JSON.parse(manifestText); // const name = manifest.name || 'Unpacked Extension'; // const matches = manifest.matches || manifest.match || []; // let css = ''; // let js = ''; // [NRS-1301]
+			const manifestText = await manifestFile.text(); // [NRS-1301]
+			const manifest = JSON.parse(manifestText); // [RESTORED]
+			const name = manifest.name || 'Unpacked Extension'; // [RESTORED]
+			const matches = manifest.matches || manifest.match || []; // [RESTORED]
+			let css = ''; // [RESTORED]
+			let js = ''; // [RESTORED]
 			if (manifest.css) {
 				// [NRS-1301]
 				// css can be a string path or array // [NRS-1301]
@@ -4910,7 +5005,8 @@ omnibox.addEventListener("input", (e) => {
 			if (!file) return; // [NRS-1301]
 			try {
 				// [NRS-1301]
-				const text = await file.text(); // const pack = JSON.parse(text); // [NRS-1301]
+				const text = await file.text(); // [NRS-1301]
+				const pack = JSON.parse(text); // [RESTORED]
 				// Support single extension or array // [NRS-1301]
 				const list = Array.isArray(pack) ? pack : [pack]; // [NRS-1301]
 				for (const ext of list) {
@@ -4944,7 +5040,10 @@ omnibox.addEventListener("input", (e) => {
 			// [NRS-1301]
 			try {
 				// [NRS-1301]
-				const data = JSON.stringify(extensions, null, 2); // const blob = new Blob([data], { type: 'application/json' }); // const url = URL.createObjectURL(blob); // const a = document.createElement('a'); // [NRS-1301]
+				const data = JSON.stringify(extensions, null, 2); // [NRS-1301]
+				const blob = new Blob([data], { type: 'application/json' }); // [RESTORED]
+				const url = URL.createObjectURL(blob); // [RESTORED]
+				const a = document.createElement('a'); // [RESTORED]
 				a.href = url; // [NRS-1301]
 				a.download = "extensions-pack.json"; // [NRS-1301]
 				document.body.appendChild(a); // [NRS-1301]
@@ -5071,7 +5170,10 @@ omnibox.addEventListener("input", (e) => {
 		// [NRS-1301]
 		btnClearSiteData.addEventListener("click", async () => {
 			// [NRS-1301]
-			const tab = tabs.find((t) => t.id === activeTabId); // const currentUrl = tab?.webview.getURL?.() || tab?.webview.src || ''; // const origin = getOrigin(currentUrl); // const msg = await clearSiteDataForOrigin(origin); // [NRS-1301]
+			const tab = tabs.find((t) => t.id === activeTabId); // [NRS-1301]
+			const currentUrl = tab?.webview.getURL?.() || tab?.webview.src || ''; // [RESTORED]
+			const origin = getOrigin(currentUrl); // [RESTORED]
+			const msg = await clearSiteDataForOrigin(origin); // [RESTORED]
 			if (msg.includes("Cleared")) {
 				// [NRS-1301]
 				showSuccess(msg); // [NRS-1301]
@@ -5189,10 +5291,6 @@ omnibox.addEventListener("input", (e) => {
 				const tab = tabs.find((t) => t.id === activeTabId); // [NRS-1301]
 				if (tab?.webview?.setZoomLevel) tab.webview.setZoomLevel(0); // [NRS-1301]
 			}, // [NRS-1301]
-			"toggle-sidebar": () => {
-				// [NRS-1301]
-				document.body.classList.toggle("sidebar-hidden"); // [NRS-1301]
-			}, // [NRS-1301]
 			devtools: () => {
 				// [NRS-1301]
 				const tab = tabs.find((t) => t.id === activeTabId); // [NRS-1301]
@@ -5218,7 +5316,9 @@ omnibox.addEventListener("input", (e) => {
 			"bookmark-page": async () => {
 				// [NRS-1301]
 				const tab = tabs.find((t) => t.id === activeTabId); // [NRS-1301]
-				if (!tab) return; // const url = tab.webview.getURL?.() || tab.webview.src || ''; // const title = tab.titleEl.textContent || url; // [NRS-1301]
+				if (!tab) return; // [NRS-1301]
+				const url = tab.webview.getURL?.() || tab.webview.src || ''; // [RESTORED]
+				const title = tab.titleEl.textContent || url; // [RESTORED]
 				try {
 					// [NRS-1301]
 					await globalThis.electronAPI.bookmarks.add({ title, url }); // [NRS-1301]
@@ -5240,7 +5340,8 @@ omnibox.addEventListener("input", (e) => {
 					false,
 				); // [NRS-1301]
 			}, // [NRS-1301]
-		}; // const handler = actionMap[action]; // [NRS-1301]
+		}; // [NRS-1301]
+		const handler = actionMap[action]; // [RESTORED]
 		if (handler) handler(); // [NRS-1301]
 	} // [NRS-1301]
 
@@ -5257,7 +5358,8 @@ omnibox.addEventListener("input", (e) => {
 				div.textContent = b.title; // [NRS-1301]
 				div.addEventListener("click", (e) => {
 					// [NRS-1301]
-					e.stopPropagation(); // const tab = tabs.find(t => t.id === activeTabId); // [NRS-1301]
+					e.stopPropagation(); // [NRS-1301]
+					const tab = tabs.find(t => t.id === activeTabId); // [RESTORED]
 					if (tab) tab.webview.src = b.url; // [NRS-1301]
 				}); // [NRS-1301]
 				bookmarksMenuList.appendChild(div); // [NRS-1301]
