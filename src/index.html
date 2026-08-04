@@ -94,8 +94,10 @@
 				<div id="omnibox-suggestions" class="omnibox-suggestions"></div>
 			</div>
 			<div class="right"><!-- [NRS-1301] -->
+				<div class="addon-right"></div><!-- [SovereignBrowser] extension icons -->
+				<button id="btn-extensions-bar" title="Extensions">&#129513;</button>
+				<span id="extensions-count" class="extensions-count" title="Enabled extensions">0 enabled</span>
 				<button id="btn-jarvis" title="Jarvis Assistant">&#129302;</button>
-				<button id="btn-new-tab" title="New Tab">&#65291;</button>
 				<div class="ovf-wrap">
 					<button id="btn-overflow" title="Settings and more" aria-haspopup="true" aria-expanded="false">&#8943;</button>
 					<div id="overflow-menu" class="overflow-menu" role="menu">
@@ -142,19 +144,10 @@
 				</div>
 			</div>
 		</div><!-- [NRS-1301] -->
-		<!-- Addon Bar (Extensions Icon) -->
-		<!-- [NRS-1301] -->
-		<div id="addon-bar"><!-- [NRS-1301] -->
-			<div class="addon-left"><!-- [NRS-1301] -->
-				<button id="btn-extensions-bar" title="Extensions">🧩 Extensions</button><!-- [NRS-1301] -->
-				<button id="btn-pin-addon" title="Pin/Unpin add-on bar">📌</button><!-- [NRS-1301] -->
-				<span id="extensions-count" class="extensions-count" title="Enabled extensions"
-					>0 enabled</span
-				><!-- [NRS-1301] -->
-			</div><!-- [NRS-1301] -->
-			<div class="addon-right"></div><!-- [NRS-1301] -->
-		</div><!-- [NRS-1301] -->
-		<div id="tabs"></div><!-- [NRS-1301] -->
+		<div id="tabbar"><!-- [SovereignBrowser] -->
+			<div id="tabs"></div>
+			<button id="btn-new-tab" title="New tab">&#65291;</button>
+		</div>
 		<!-- Loading Progress Bar -->
 		<!-- [NRS-1301] -->
 		<div id="loading-progress" class="loading-progress"></div><!-- [NRS-1301] -->

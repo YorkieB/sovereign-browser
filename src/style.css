@@ -2275,3 +2275,53 @@ textarea:focus {
 	padding: 0 8px;
 }
 .ovf-label { font-size: 14.5px; }
+
+/* [SovereignBrowser] Edge-style tab strip with the new-tab button inline */
+#tabbar {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 8px;
+	border-bottom: 1px solid #ddd;
+	background: #fafafa;
+	flex-shrink: 0;
+}
+#tabs {
+	display: flex;
+	gap: 4px;
+	padding: 0;
+	border-bottom: none;
+	background: transparent;
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow-x: auto;
+	scrollbar-width: thin;
+}
+#tabs::-webkit-scrollbar { height: 6px; }
+#tabs::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+#btn-new-tab {
+	appearance: none;
+	-webkit-appearance: none;
+	border: none;
+	background: transparent;
+	color: #3c3c3c;
+	font-size: 20px;
+	line-height: 1;
+	width: 32px;
+	height: 32px;
+	border-radius: 999px;
+	cursor: pointer;
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s ease;
+}
+#btn-new-tab:hover { background: rgba(0, 0, 0, 0.08); }
+#btn-new-tab:active { background: rgba(0, 0, 0, 0.14); }
+
+/* [SovereignBrowser] Extensions in the toolbar, Edge-style */
+#addon-bar { display: none; }
+.addon-right { display: flex; align-items: center; gap: 2px; }
+.addon-right button, .addon-right img { width: 32px; height: 32px; border-radius: 999px; }
+.extensions-count { display: none; }

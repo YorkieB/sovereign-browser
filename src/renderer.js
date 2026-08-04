@@ -306,6 +306,7 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 	} // [NRS-1301]
 
 	async function applyExtensionsToWebview(webview, url) {
+		if (!webview || !webview.__domReady) { return; } // [SovereignBrowser]
 		// [NRS-1301]
 		try {
 			// [NRS-1301]
@@ -488,6 +489,7 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 	} // [NRS-1301]
 
 	function applySitePermissions(tab, origin) {
+		if (!tab || !tab.webview || !tab.webview.__domReady) { return; } // [SovereignBrowser]
 		// [NRS-1301]
 		if (!tab || !origin) return; // [NRS-1301]
 		const setting = loadSiteSetting(origin); // [RESTORED]
@@ -767,6 +769,10 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 	} // [NRS-1301]
 
 	function applyTrackingProtection(webview) {
+		// [SovereignBrowser] did-navigate fires before dom-ready, and
+		// executeJavaScript throws if the webview is not ready yet. The
+		// dom-ready handler re-applies this, so skipping here loses nothing.
+		if (!webview || !webview.__domReady) { return; }
 		// [NRS-1301]
 		if (!privacySettings.trackingProtection) return; // [NRS-1301]
 
@@ -1447,6 +1453,7 @@ async function fetchBraveSuggestions(query) {
 
 		// Inject comprehensive error prevention script // [NRS-1301]
 		webview.addEventListener("dom-ready", () => {
+			webview.__domReady = true; // [SovereignBrowser] see readiness guards below
 			// [NRS-1301]
 			const script = `
         // Global error handler // [NRS-1301]
