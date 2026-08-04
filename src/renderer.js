@@ -4783,65 +4783,132 @@ omnibox.addEventListener("input", (e) => {
 	// held by the Electron session, not by the homegrown css/js list in
 	// localStorage, so the dialog could never see them. Ask main for the real
 	// list and show it above the custom ones.
+	// [SovereignBrowser] Real extension management. Electron has no
+	// disabled-but-installed state, so main derives "installed" from disk and
+	// "enabled" from what is loaded, persisting the disabled set itself.
 	async function renderChromeExtensions() {
 		if (!extensionsList) { return; }
 		let list = [];
 		try {
-			list = await globalThis.electronAPI.invoke("holly:extensions:list");
+			list = await globalThis.electronAPI.invoke("holly:extensions:manage-list");
 		} catch (err) {
-			console.warn("[extensions] could not list Chrome extensions:", err.message);
+			console.warn("[extensions] could not list:", err.message);
 			return;
 		}
-		if (!Array.isArray(list) || !list.length) { return; }
 
 		const heading = document.createElement("h3");
-		heading.textContent = "Chrome extensions";
+		heading.textContent = "Installed extensions";
 		heading.style.margin = "4px 0 8px";
 		extensionsList.appendChild(heading);
+
+		if (!Array.isArray(list) || !list.length) {
+			const none = document.createElement("p");
+			none.textContent = "None installed. Visit the Chrome Web Store to add one.";
+			none.style.cssText = "color:#666;padding:8px";
+			extensionsList.appendChild(none);
+		}
 
 		list.forEach((ext) => {
 			const card = document.createElement("div");
 			card.className = "extension-card";
+			card.style.cssText = "border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:10px";
+
+			const top = document.createElement("div");
+			top.style.cssText = "display:flex;align-items:center;gap:10px";
 
 			const title = document.createElement("div");
-			title.style.fontWeight = "600";
-			title.textContent = ext.name + "  v" + ext.version;
+			title.style.flex = "1";
+			const nameEl = document.createElement("div");
+			nameEl.style.fontWeight = "600";
+			nameEl.textContent = ext.name;
+			const metaEl = document.createElement("div");
+			metaEl.style.cssText = "font-size:12px;opacity:.7";
+			metaEl.textContent = "Version " + ext.version + (ext.manifestVersion ? "  |  Manifest V" + ext.manifestVersion : "");
+			title.appendChild(nameEl);
+			title.appendChild(metaEl);
 
-			const desc = document.createElement("div");
-			desc.style.fontSize = "12px";
-			desc.style.opacity = "0.75";
-			desc.textContent = ext.description || ext.id;
-
-			const remove = document.createElement("button");
-			remove.className = "setting-btn";
-			remove.textContent = "Remove";
-			remove.style.marginTop = "6px";
-			remove.addEventListener("click", async () => {
-				remove.disabled = true;
+			const toggle = document.createElement("input");
+			toggle.type = "checkbox";
+			toggle.checked = !!ext.enabled;
+			toggle.title = ext.enabled ? "Enabled" : "Disabled";
+			toggle.style.cssText = "width:20px;height:20px;cursor:pointer";
+			toggle.addEventListener("change", async () => {
+				toggle.disabled = true;
 				try {
-					const res = await globalThis.electronAPI.invoke("holly:extensions:remove", ext.id);
-					if (res && res.ok) {
-						renderExtensions();
-						showSuccess("Removed " + ext.name);
+					const res = await globalThis.electronAPI.invoke("holly:extensions:set-enabled", ext.id, toggle.checked);
+					if (!res || !res.ok) {
+						toggle.checked = !toggle.checked;
+						showSuccess("Could not change: " + ((res && res.error) || "unknown error"));
 					} else {
-						remove.disabled = false;
-						console.warn("[extensions] remove failed:", res && res.error);
+						showSuccess((toggle.checked ? "Enabled " : "Disabled ") + ext.name);
 					}
 				} catch (err) {
-					remove.disabled = false;
-					console.warn("[extensions] remove failed:", err.message);
+					toggle.checked = !toggle.checked;
+					console.warn("[extensions] toggle failed:", err.message);
+				}
+				toggle.disabled = false;
+			});
+
+			top.appendChild(title);
+			top.appendChild(toggle);
+			card.appendChild(top);
+
+			if (ext.description) {
+				const d = document.createElement("div");
+				d.style.cssText = "font-size:13px;margin-top:8px";
+				d.textContent = ext.description;
+				card.appendChild(d);
+			}
+
+			const perms = (ext.permissions || []).concat(ext.hostPermissions || []);
+			if (perms.length) {
+				const p = document.createElement("div");
+				p.style.cssText = "font-size:12px;opacity:.7;margin-top:8px";
+				p.textContent = "Permissions: " + perms.join(", ");
+				card.appendChild(p);
+			}
+
+			const idEl = document.createElement("div");
+			idEl.style.cssText = "font-size:11px;opacity:.55;margin-top:6px";
+			idEl.textContent = "ID " + ext.id + "  |  Source: " + (ext.source || "unknown");
+			card.appendChild(idEl);
+
+			const actions = document.createElement("div");
+			actions.style.cssText = "display:flex;gap:8px;margin-top:10px";
+
+			const folderBtn = document.createElement("button");
+			folderBtn.className = "setting-btn";
+			folderBtn.textContent = "Copy folder path";
+			folderBtn.addEventListener("click", async () => {
+				const res = await globalThis.electronAPI.invoke("holly:extensions:open-folder", ext.id);
+				showSuccess(res && res.ok ? "Profile folder opened; extension path copied" : "Could not locate folder");
+			});
+
+			const removeBtn = document.createElement("button");
+			removeBtn.className = "setting-btn";
+			removeBtn.textContent = "Remove";
+			removeBtn.addEventListener("click", async () => {
+				if (!confirm("Remove " + ext.name + "? This deletes its files.")) { return; }
+				removeBtn.disabled = true;
+				try {
+					const res = await globalThis.electronAPI.invoke("holly:extensions:uninstall", ext.id);
+					if (res && res.ok) { showSuccess("Removed " + ext.name); renderExtensions(); }
+					else { removeBtn.disabled = false; showSuccess("Could not remove"); }
+				} catch (err) {
+					removeBtn.disabled = false;
+					console.warn("[extensions] uninstall failed:", err.message);
 				}
 			});
 
-			card.appendChild(title);
-			card.appendChild(desc);
-			card.appendChild(remove);
+			actions.appendChild(folderBtn);
+			actions.appendChild(removeBtn);
+			card.appendChild(actions);
 			extensionsList.appendChild(card);
 		});
 
 		const sep = document.createElement("h3");
 		sep.textContent = "Custom extensions";
-		sep.style.margin = "14px 0 8px";
+		sep.style.margin = "18px 0 8px";
 		extensionsList.appendChild(sep);
 	}
 

@@ -275,74 +275,165 @@ ipcMain.handle('holly:extensions:remove', (event, id) => {
   }
 });
 
-async function setupChromeExtensions() {
-  const browserSession = browsingSession();
+// [SovereignBrowser] Extension management.
+// Electron has no concept of a disabled-but-installed extension: an extension
+// is either loaded into the session or it is not. So "installed" is derived
+// from what is on disk, "enabled" from what is currently loaded, and the
+// disabled set is persisted ourselves so the choice survives a restart.
+const EXTENSIONS_DIR = () => path.join(app.getPath('userData'), 'Extensions');
 
-  chromeExtensions = new ElectronChromeExtensions({
-    // [SovereignBrowser] electron-chrome-extensions is dual licensed:
-    // GPL-3.0 or a paid Patron licence. HOLLY is GPL-3.0.
-    license: 'GPL-3.0',
-    session: browserSession,
-    createTab(details) {
-      tellRenderer('ext:create-tab', { url: details.url || 'about:blank' });
-      const win = mainWindow();
-      return [win ? win.webContents : null, win];
-    },
-    selectTab(tab) {
-      tellRenderer('ext:select-tab', { webContentsId: tab.id });
-    },
-    removeTab(tab) {
-      tellRenderer('ext:remove-tab', { webContentsId: tab.id });
-    },
-    createWindow(details) {
-      tellRenderer('ext:create-tab', { url: (details.url && details.url[0]) || 'about:blank' });
-      return mainWindow();
-    },
-  });
-
-  // Enables chromewebstore.google.com install buttons and restores whatever
-  // was installed previously.
-  await installChromeWebStore({
-    session: browserSession,
-    modulePath: path.join(__dirname, 'node_modules', 'electron-chrome-web-store'),
-  });
-
-  const loaded = browserSession.extensions
-    ? browserSession.extensions.getAllExtensions()
-    : browserSession.getAllExtensions();
-  console.log('[Holly] Chrome extension support ready. Loaded:', loaded.length);
-  loaded.forEach((e) => console.log('   -', e.name, e.version, e.id));
+function extensionsState() {
+  return readJson('extensions-state.json', { disabled: [] });
 }
-// App initialization - wrapped in async IIFE (CommonJS has no top-level await) // [NRS-1001]
-(async () => {
+
+function setExtensionDisabled(id, disabled) {
+  const state = extensionsState();
+  const set = new Set(state.disabled || []);
+  if (disabled) { set.add(id); } else { set.delete(id); }
+  state.disabled = Array.from(set);
+  writeJson('extensions-state.json', state);
+}
+
+// Each extension lives at Extensions/<id>/<version>/manifest.json
+function findExtensionPath(id) {
   try {
-    await app.whenReady(); // [NRS-1001]
-    await loadExtensions(); // [NRS-1001]
-    try {
-      await setupChromeExtensions(); // [SovereignBrowser]
-    } catch (err) {
-      console.error('[Holly] Chrome extension support failed to initialise:', err);
-    }
-    setupJarvisAgentHandlers(); // Initialize multi-agent handlers // [NRS-1001]
-    createWindow(); // [NRS-1001]
-    const mainWindow = BrowserWindow.getAllWindows()[0]; // [NRS-1001]
-    if (!mainWindow) {
-      throw new Error('createWindow() ran but no BrowserWindow was registered.');
-    }
-    new BrowserAutomationManager(mainWindow); // [NRS-1001]
+    const base = path.join(EXTENSIONS_DIR(), id);
+    if (!fs.existsSync(base)) { return null; }
+    const versions = fs.readdirSync(base, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .sort();
+    if (!versions.length) { return null; }
+    return path.join(base, versions[versions.length - 1]);
   } catch (err) {
-    console.error('[Holly] Startup failed:', err);
-    try {
-      dialog.showErrorBox('HOLLY failed to start', String(err && err.stack ? err.stack : err));
-    } catch (dialogErr) {
-      console.error('[Holly] Could not display error dialog:', dialogErr);
-    }
-    app.quit();
+    console.warn('[Holly] Could not resolve extension path for', id, err.message);
+    return null;
   }
-})();
-app.on('activate', () => {
-  // [NRS-1001]
-  if (BrowserWindow.getAllWindows().length === 0) createWindow(); // [NRS-1001]
+}
+
+function readManifest(extPath) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(extPath, 'manifest.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function sessionExtensions() {
+  const s = browsingSession();
+  return s.extensions || s;
+}
+
+function listInstalledExtensions() {
+  const loaded = new Map(sessionExtensions().getAllExtensions().map((e) => [e.id, e]));
+  const disabled = new Set(extensionsState().disabled || []);
+  const dir = EXTENSIONS_DIR();
+  const results = [];
+
+  let ids = [];
+  try {
+    if (fs.existsSync(dir)) {
+      ids = fs.readdirSync(dir, { withFileTypes: true })
+        .filter((d) => d.isDirectory())
+        .map((d) => d.name);
+    }
+  } catch (err) {
+    console.warn('[Holly] Could not read extensions directory:', err.message);
+  }
+
+  for (const id of ids) {
+    const extPath = findExtensionPath(id);
+    const manifest = extPath ? readManifest(extPath) : null;
+    const live = loaded.get(id);
+    if (!manifest && !live) { continue; }
+    results.push({
+      id,
+      name: (live && live.name) || (manifest && manifest.name) || id,
+      version: (live && live.version) || (manifest && manifest.version) || '',
+      description: (manifest && manifest.description) || '',
+      permissions: (manifest && manifest.permissions) || [],
+      hostPermissions: (manifest && (manifest.host_permissions || [])) || [],
+      manifestVersion: (manifest && manifest.manifest_version) || null,
+      path: extPath || (live && live.path) || '',
+      enabled: !!live && !disabled.has(id),
+      source: 'Chrome Web Store',
+    });
+  }
+  return results;
+}
+
+ipcMain.handle('holly:extensions:manage-list', () => {
+  try {
+    return listInstalledExtensions();
+  } catch (err) {
+    console.warn('[Holly] manage-list failed:', err.message);
+    return [];
+  }
+});
+
+ipcMain.handle('holly:extensions:set-enabled', async (event, id, enabled) => {
+  try {
+    const ext = sessionExtensions();
+    if (enabled) {
+      const extPath = findExtensionPath(id);
+      if (!extPath) { throw new Error('Extension files not found on disk'); }
+      await ext.loadExtension(extPath, { allowFileAccess: true });
+    } else {
+      ext.removeExtension(id);
+    }
+    setExtensionDisabled(id, !enabled);
+    return { ok: true };
+  } catch (err) {
+    console.warn('[Holly] set-enabled failed:', err.message);
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('holly:extensions:uninstall', (event, id) => {
+  try {
+    try { sessionExtensions().removeExtension(id); } catch {}
+    const base = path.join(EXTENSIONS_DIR(), id);
+    if (fs.existsSync(base)) {
+      fs.rmSync(base, { recursive: true, force: true });
+    }
+    setExtensionDisabled(id, false);
+    return { ok: true };
+  } catch (err) {
+    console.warn('[Holly] uninstall failed:', err.message);
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('holly:extensions:open-folder', async (event, id) => {
+  // [SovereignBrowser] Explorer refuses to navigate to the extensions folder
+  // under %LOCALAPPDATA% regardless of invocation form (shell.openPath,
+  // showItemInFolder, explorer /select, cmd start), even though the files are
+  // readable and the ACL grants full control. Rather than keep fighting the
+  // shell, copy the path to the clipboard so it can be pasted anywhere, and
+  // still attempt to open it.
+  try {
+    const extPath = findExtensionPath(id);
+    if (!extPath || !fs.existsSync(extPath)) {
+      return { ok: false, error: 'Not found on disk' };
+    }
+    try {
+      const { clipboard } = require('electron');
+      clipboard.writeText(extPath);
+    } catch (clipErr) {
+      console.warn('[Holly] Could not copy path:', clipErr.message);
+    }
+    // Explorer will not navigate into the Chromium profile tree. This is
+    // reproducible outside HOLLY entirely - cmd /c start fails the same way
+    // on a freshly created empty folder there, while deep folders elsewhere
+    // open fine. The profile root does open, so go there and leave the exact
+    // path on the clipboard to paste into the address bar.
+    const openErr = await shell.openPath(app.getPath('userData'));
+    if (openErr) { console.warn('[Holly] openPath reported:', openErr); }
+    return { ok: true, path: extPath, copied: true };
+  } catch (err) {
+    console.warn('[Holly] open-folder failed:', err.message);
+    return { ok: false, error: err.message };
+  }
 }); // [NRS-1001]
 
 app.on('window-all-closed', () => {
@@ -478,6 +569,10 @@ ipcMain.handle('mic:open-settings', async () => {
     return { opened: false, error: err?.message || 'Unknown error' }; // [NRS-1001]
   } // [NRS-1001]
 }); // [NRS-1001]
+
+
+
+
 
 
 
