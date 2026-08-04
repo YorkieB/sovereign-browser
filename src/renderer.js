@@ -186,12 +186,12 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 	let nextId = 1; // [NRS-1301]
 
 	// Storage keys // [NRS-1301]
-	const AUTO_DEVTOOLS_KEY = "lightbrowser.autoDevtools"; // [NRS-1301]
-	const SITE_SETTINGS_KEY = "lightbrowser.siteSettings"; // [NRS-1301]
-	const SESSION_KEY = "lightbrowser.session"; // [NRS-1301]
-	const PRIVACY_SETTINGS_KEY = "lightbrowser.privacySettings"; // [NRS-1301]
-	const EXTENSIONS_KEY = "lightbrowser.extensions"; // [NRS-1301]
-	const ADDON_PIN_KEY = "lightbrowser.addonPinned"; // [NRS-1301]
+	const AUTO_DEVTOOLS_KEY = "holly.autoDevtools"; // [NRS-1301]
+	const SITE_SETTINGS_KEY = "holly.siteSettings"; // [NRS-1301]
+	const SESSION_KEY = "holly.session"; // [NRS-1301]
+	const PRIVACY_SETTINGS_KEY = "holly.privacySettings"; // [NRS-1301]
+	const EXTENSIONS_KEY = "holly.extensions"; // [NRS-1301]
+	const ADDON_PIN_KEY = "holly.addonPinned"; // [NRS-1301]
 
 	// Auto devtools setting // [NRS-1301]
 	let autoDevtools = (() => {
@@ -341,7 +341,7 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 		brave: { name: "Brave", url: "https://search.brave.com/search?q=" }, // [SovereignBrowser]
 	};
 	let currentSearchEngine = "brave"; // [RESTORED] default changed from bing
-	const SEARCH_ENGINE_KEY = "lightbrowser.searchEngine"; // [RESTORED]
+	const SEARCH_ENGINE_KEY = "holly.searchEngine"; // [RESTORED]
 
 	// Load saved search engine preference // [NRS-1301]
 	try {
@@ -5075,7 +5075,7 @@ omnibox.addEventListener("input", (e) => {
 			const result = await globalThis.electronAPI.setDefaultBrowser?.(); // [NRS-1301]
 			if (result?.success) {
 				// [NRS-1301]
-				defaultBrowserStatus.textContent = "? Light Browser is now your default browser!"; // [NRS-1301]
+				defaultBrowserStatus.textContent = "? HOLLY is now your default browser!"; // [NRS-1301]
 				defaultBrowserStatus.style.color = "green"; // [NRS-1301]
 			} else {
 				// [NRS-1301]
@@ -5339,7 +5339,7 @@ omnibox.addEventListener("input", (e) => {
 			about: () => {
 				// [NRS-1301]
 				addJarvisMessage(
-					"Light Browser v1.0 - A lightweight, Electron-based web browser with AI assistance via Jarvis.",
+					"HOLLY v1.0 - A lightweight, Electron-based web browser with AI assistance via Jarvis.",
 					false,
 				); // [NRS-1301]
 			}, // [NRS-1301]
@@ -5416,13 +5416,4 @@ omnibox.addEventListener("input", (e) => {
 		} // [NRS-1301]
 	}); // [NRS-1301]
 
-	// Initialize Jarvis Agent Panel // [NRS-1301]
-	setTimeout(() => {
-		// [NRS-1301]
-		if (jarvisAgentPanel) {
-			// [NRS-1301]
-			jarvisAgentPanel.init(); // [NRS-1301]
-			jarvisAgentPanel.startStatusPolling(3000); // [NRS-1301]
-		} // [NRS-1301]
-	}, 2000); // [NRS-1301]
 })(); // [NRS-1301]

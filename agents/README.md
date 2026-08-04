@@ -69,7 +69,7 @@ Required packages:
 - `debug` - Logging
 
 ### 2. Configure Environment
-Create a `.env` file in the LightBrowser root:
+Create a `.env` file in the Holly root:
 ```env
 ANTHROPIC_API_KEY=your_api_key_here
 DEBUG=jarvis:*
@@ -292,7 +292,7 @@ new MultiAgentCoordinator({
 
 The multi-agent system integrates seamlessly with Jarvis:
 1. Commands can trigger agent workflows
-2. Agents can access browser context from LightBrowser
+2. Agents can access browser context from Holly
 3. Results can be displayed in Jarvis UI
 4. Agent state persists across sessions
 

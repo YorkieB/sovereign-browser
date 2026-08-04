@@ -1,7 +1,7 @@
-# LIGHTBROWSER NRS INDEX
+# HOLLY NRS INDEX
 ## Quick Reference for Browser Automation Project
 
-**Project:** LightBrowser  
+**Project:** Holly  
 **Date:** January 23, 2026  
 **NRS Range:** 10xx - 14xx  
 
@@ -242,7 +242,7 @@
 ### package.json
 ```json
 {
-  "name": "lightbrowser",
+  "name": "holly",
   "main": "main.js",
   "dependencies": { ... },
   "scripts": {
@@ -263,7 +263,7 @@ LOG_LEVEL=info
 
 ### Directory Structure
 ```
-LightBrowser/
+Holly/
 ├── agents/           [NRS-10xx, 11xx, 13xx]
 ├── src/              [NRS-12xx]
 ├── main.js           [NRS-14xx]
@@ -329,7 +329,7 @@ LightBrowser/
 
 - **Total Codes:** 33 micro-codes
 - **Total Lines Annotated:** ~1,500+
-- **Coverage:** 100% of LightBrowser
+- **Coverage:** 100% of Holly
 - **Categories:** 5 (10xx-14xx)
 - **Files:** 13 JavaScript files
 
@@ -337,7 +337,7 @@ LightBrowser/
 
 ## Related Documentation
 
-- **LIGHTBROWSER_NRS_HANDBOOK.md** - Detailed documentation
+- **HOLLY_NRS_HANDBOOK.md** - Detailed documentation
 - **PROJECT_NRS_MASTER_GUIDE.md** - Master guide for all projects
 - **README.md** - Project overview
 

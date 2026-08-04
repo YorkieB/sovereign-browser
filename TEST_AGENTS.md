@@ -3,7 +3,7 @@
 ## ✅ Application Status
 - **Status**: Running successfully
 - **Process**: npm start launched Electron window
-- **Window**: LightBrowser with Jarvis Agent Panel loaded
+- **Window**: Holly with Jarvis Agent Panel loaded
 - **Time**: Step 3/3 execution (application testing)
 
 ## Quick Test Instructions
@@ -59,7 +59,7 @@ await window.electronAPI.invoke('jarvis:workflow:automate', {
 - ⚠️ Actual agent workflows not executed
 
 ### With API Key (Production Mode)
-1. Create `.env` file in LightBrowser directory:
+1. Create `.env` file in Holly directory:
 ```
 ANTHROPIC_API_KEY=sk-your-actual-key-here
 ```
@@ -80,7 +80,7 @@ ANTHROPIC_API_KEY=sk-your-actual-key-here
 - [ ] Results display area (hidden until workflow runs)
 
 ### Theme Consistency:
-- [ ] Segoe UI font (matches Light Browser)
+- [ ] Segoe UI font (matches HOLLY)
 - [ ] Dark theme cards with light text
 - [ ] Smooth transitions and animations
 - [ ] Responsive layout
@@ -90,7 +90,7 @@ ANTHROPIC_API_KEY=sk-your-actual-key-here
 ### If app won't start:
 ```bash
 # Clear npm cache and reinstall
-cd c:\Users\conta\Webex\LightBrowser
+cd c:\Users\conta\Webex\Holly
 rm -Force node_modules -Recurse
 npm install
 npm start

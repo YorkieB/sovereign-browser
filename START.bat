@@ -1,11 +1,11 @@
 @echo off
-REM Quick Start Script for LightBrowser with Jarvis Agents
+REM Quick Start Script for Holly with Jarvis Agents
 REM This script launches the app and opens DevTools automatically
 
 cd /d "%~dp0"
 
 echo ========================================
-echo   LightBrowser - Jarvis Agent System
+echo   Holly - Jarvis Agent System
 echo ========================================
 echo.
 echo Starting application...

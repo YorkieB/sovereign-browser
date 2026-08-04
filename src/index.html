@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-# [NRS-1301] <html lang="en"><!-- [NRS-1301] -->
+<html lang="en"><!-- [NRS-1301] -->
 	<head><!-- [NRS-1301] -->
 		<meta charset="UTF-8"><!-- [NRS-1301] -->
 		<meta http-equiv="X-UA-Compatible" content="IE=edge"><!-- [NRS-1301] -->
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"><!-- [NRS-1301] -->
-		<title>Light Browser</title><!-- [NRS-1301] -->
+		<title>HOLLY</title><!-- [NRS-1301] -->
 		<link rel="stylesheet" href="style.css"><!-- [NRS-1301] -->
 	</head><!-- [NRS-1301] -->
-	<body class="sidebar-hidden"><!-- [NRS-1301] -->
+	<body><!-- [NRS-1301] -->
 		<div id="menu-bar"><!-- [NRS-1301] -->
 			<div class="menu-item"><!-- [NRS-1301] -->
 				<button class="menu-label">File</button><!-- [NRS-1301] -->
@@ -75,39 +75,72 @@
 			<div class="menu-item"><!-- [NRS-1301] -->
 				<button class="menu-label">Help</button><!-- [NRS-1301] -->
 				<div class="menu-dropdown"><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="about">About Light Browser</div><!-- [NRS-1301] -->
+					<div class="menu-option" data-action="about">About HOLLY</div><!-- [NRS-1301] -->
 					<div class="menu-option" data-action="report-issue">Report Issue</div><!-- [NRS-1301] -->
 				</div><!-- [NRS-1301] -->
 			</div><!-- [NRS-1301] -->
 		</div><!-- [NRS-1301] -->
 		<div id="toolbar"><!-- [NRS-1301] -->
 			<div class="left"><!-- [NRS-1301] -->
-				<button id="btn-back" title="Back">⟵</button><!-- [NRS-1301] -->
-				<button id="btn-forward" title="Forward">⟶</button><!-- [NRS-1301] -->
-				<button id="btn-reload" title="Reload">⟳</button><!-- [NRS-1301] -->
-        <button id="btn-home" title="Home">⌂</button><!-- [SovereignBrowser] -->
-				<button id="btn-new-window" title="New Window">🗔</button><!-- [NRS-1301] -->
-				<button id="btn-new-incognito" title="New Incognito Tab">🕶</button><!-- [NRS-1301] -->
-			</div><!-- [NRS-1301] -->
+				<button id="btn-back" title="Back">&#10229;</button>
+				<button id="btn-forward" title="Forward">&#10230;</button>
+				<button id="btn-reload" title="Reload">&#10227;</button>
+				<button id="btn-home" title="Home">&#8962;</button>
+			</div>
 			<div class="omnibox-container"><!-- [NRS-1301] -->
-				<span id="lock-icon" class="lock-icon" aria-hidden="true">🔒</span><!-- [NRS-1301] -->
-				<input id="omnibox" type="text" placeholder="Search or enter address"><!-- [NRS-1301] -->
-				<button id="btn-bookmark" class="bookmark" title="Bookmark">★</button><!-- [NRS-1301] -->
-				<div id="omnibox-suggestions" class="omnibox-suggestions"></div><!-- [NRS-1301] -->
-			</div><!-- [NRS-1301] -->
+				<span id="lock-icon" class="lock-icon" aria-hidden="true">&#128274;</span>
+				<input id="omnibox" type="text" placeholder="Search or enter address">
+				<button id="btn-bookmark" class="bookmark" title="Bookmark">&#9733;</button>
+				<div id="omnibox-suggestions" class="omnibox-suggestions"></div>
+			</div>
 			<div class="right"><!-- [NRS-1301] -->
-				<button id="btn-tab-group-a" title="Add to Group A">A</button><!-- [NRS-1301] -->
-				<button id="btn-tab-group-b" title="Add to Group B">B</button><!-- [NRS-1301] -->
-				<button id="btn-split-view" title="Toggle Split View">⇆</button><!-- [NRS-1301] -->
-				<button id="btn-devtools" title="Toggle DevTools">🛠</button><!-- [NRS-1301] -->
-				<button id="btn-devtools-auto" title="Toggle auto-open DevTools">
-					Auto DT
-				</button><!-- [NRS-1301] -->
-				<button id="btn-jarvis" title="Toggle Jarvis Assistant">🤖</button><!-- [NRS-1301] -->
-				<button id="btn-voice" title="Voice Control - Click to speak">🎤</button><!-- [NRS-1301] -->
-				<button id="btn-settings" title="Settings">⚙</button><!-- [NRS-1301] -->
-				<button id="btn-new-tab" title="New Tab">＋</button><!-- [NRS-1301] -->
-			</div><!-- [NRS-1301] -->
+				<button id="btn-jarvis" title="Jarvis Assistant">&#129302;</button>
+				<button id="btn-new-tab" title="New Tab">&#65291;</button>
+				<div class="ovf-wrap">
+					<button id="btn-overflow" title="Settings and more" aria-haspopup="true" aria-expanded="false">&#8943;</button>
+					<div id="overflow-menu" class="overflow-menu" role="menu">
+						<div class="ovf-row" role="menuitem">
+							<button id="btn-new-window" title="New Window">&#128470;</button>
+							<span class="ovf-label">New window</span>
+						</div>
+						<div class="ovf-row" role="menuitem">
+							<button id="btn-new-incognito" title="New Incognito Tab">&#128374;</button>
+							<span class="ovf-label">New incognito tab</span>
+						</div>
+						<div class="ovf-sep"></div>
+						<div class="ovf-row" role="menuitem">
+							<button id="btn-split-view" title="Toggle Split View">&#8646;</button>
+							<span class="ovf-label">Split view</span>
+						</div>
+						<div class="ovf-row" role="menuitem">
+							<button id="btn-tab-group-a" title="Add to Group A">A</button>
+							<span class="ovf-label">Add tab to group A</span>
+						</div>
+						<div class="ovf-row" role="menuitem">
+							<button id="btn-tab-group-b" title="Add to Group B">B</button>
+							<span class="ovf-label">Add tab to group B</span>
+						</div>
+						<div class="ovf-sep"></div>
+						<div class="ovf-row" role="menuitem">
+							<button id="btn-voice" title="Voice Control">&#127908;</button>
+							<span class="ovf-label">Voice control</span>
+						</div>
+						<div class="ovf-row" role="menuitem">
+							<button id="btn-devtools" title="Toggle DevTools">&#128295;</button>
+							<span class="ovf-label">Developer tools</span>
+						</div>
+						<div class="ovf-row" role="menuitem">
+							<button id="btn-devtools-auto" title="Toggle auto-open DevTools">Auto DT</button>
+							<span class="ovf-label">Auto-open DevTools</span>
+						</div>
+						<div class="ovf-sep"></div>
+						<div class="ovf-row" role="menuitem">
+							<button id="btn-settings" title="Settings">&#9881;</button>
+							<span class="ovf-label">Settings</span>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div><!-- [NRS-1301] -->
 		<!-- Addon Bar (Extensions Icon) -->
 		<!-- [NRS-1301] -->
@@ -175,17 +208,6 @@
 		</div><!-- [NRS-1301] -->
 		<div id="main"><!-- [NRS-1301] -->
 			<div id="content"></div><!-- [NRS-1301] -->
-			<div id="sidebar"><!-- [NRS-1301] -->
-				<div class="section"><!-- [NRS-1301] -->
-					<h3>Bookmarks</h3><!-- [NRS-1301] -->
-					<ul id="bookmark-list"></ul><!-- [NRS-1301] -->
-				</div><!-- [NRS-1301] -->
-				<div class="section"><!-- [NRS-1301] -->
-					<h3>History</h3><!-- [NRS-1301] -->
-					<button id="btn-clear-history">Clear</button><!-- [NRS-1301] -->
-					<ul id="history-list"></ul><!-- [NRS-1301] -->
-				</div><!-- [NRS-1301] -->
-			</div><!-- [NRS-1301] -->
 			<div id="jarvis-bar" class="jarvis-bar"><!-- [NRS-1301] -->
 				<div class="jarvis-header"><!-- [NRS-1301] -->
 					<span class="jarvis-title">🤖 Jarvis Assistant</span><!-- [NRS-1301] -->
@@ -273,6 +295,17 @@
 						</button><!-- [NRS-1301] -->
 					</div><!-- [NRS-1301] -->
 				</div><!-- [NRS-1301] -->
+				<div class="settings-section"><!-- [SovereignBrowser] moved from sidebar -->
+					<h3>Bookmarks</h3>
+					<ul id="bookmark-list"></ul>
+				</div>
+				<div class="settings-section"><!-- [SovereignBrowser] moved from sidebar -->
+					<h3>History</h3>
+					<div class="settings-row gap">
+						<button id="btn-clear-history" class="setting-btn">Clear History</button>
+					</div>
+					<ul id="history-list"></ul>
+				</div>
 				<button id="btn-close-settings" class="modal-close">Close</button><!-- [NRS-1301] -->
 			</div><!-- [NRS-1301] -->
 		</div><!-- [NRS-1301] -->
@@ -360,8 +393,46 @@
 				</div><!-- [NRS-1301] -->
 			</div><!-- [NRS-1301] -->
 		</div><!-- [NRS-1301] -->
-		<script src="jarvis-agent-panel.js"></script><!-- [NRS-1301] -->
-		<script src="renderer.js"></script><!-- [NRS-1301] -->
+		<script src="renderer.js"></script>
+<script>
+(function () {
+	// [SovereignBrowser] Overflow menu. The buttons inside are the original
+	// elements moved from the toolbar, so all existing listeners still apply.
+	// Rows forward clicks to their button; the buttons themselves have
+	// pointer-events disabled so a click cannot register twice.
+	var btn = document.getElementById("btn-overflow");
+	var menu = document.getElementById("overflow-menu");
+	if (!btn || !menu) { return; }
+
+	function close() {
+		menu.classList.remove("open");
+		btn.setAttribute("aria-expanded", "false");
+	}
+
+	btn.addEventListener("click", function (e) {
+		e.stopPropagation();
+		var open = menu.classList.toggle("open");
+		btn.setAttribute("aria-expanded", open ? "true" : "false");
+	});
+
+	menu.querySelectorAll(".ovf-row").forEach(function (row) {
+		row.addEventListener("click", function (e) {
+			e.stopPropagation();
+			var target = row.querySelector("button");
+			if (target) { target.click(); }
+			close();
+		});
+	});
+
+	document.addEventListener("click", function (e) {
+		if (!menu.contains(e.target) && e.target !== btn) { close(); }
+	});
+	document.addEventListener("keydown", function (e) {
+		if (e.key === "Escape") { close(); }
+	});
+	window.addEventListener("blur", close);
+})();
+</script><!-- [NRS-1301] -->
 	</body><!-- [NRS-1301] -->
 </html>
 <!-- [NRS-1301] -->

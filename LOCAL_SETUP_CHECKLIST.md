@@ -3,7 +3,7 @@
 ## Before You Start
 - [ ] You have Node.js installed (v16+)
 - [ ] You have an Anthropic API key
-- [ ] You're in the LightBrowser directory
+- [ ] You're in the Holly directory
 - [ ] You have 5 minutes
 
 ## Installation Steps
@@ -33,7 +33,7 @@ cp .env.example .env
 npm start
 ```
 - [ ] Electron window opens
-- [ ] LightBrowser loads
+- [ ] Holly loads
 - [ ] No error messages in console
 - [ ] Can browse websites normally
 

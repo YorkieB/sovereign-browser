@@ -20,7 +20,7 @@ The `browser-use-agent.js` now:
 
 ### Step 1: Install Dependencies
 ```bash
-cd LightBrowser
+cd Holly
 npm install
 ```
 

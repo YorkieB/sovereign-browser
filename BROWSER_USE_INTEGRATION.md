@@ -2,7 +2,7 @@
 
 ## What Was Integrated
 
-I've successfully integrated **Anthropic's Browser Use** with **multi-agent support** into your LightBrowser/Jarvis project. This gives Jarvis powerful browser automation capabilities with coordinated multi-agent workflows.
+I've successfully integrated **Anthropic's Browser Use** with **multi-agent support** into your Holly/Jarvis project. This gives Jarvis powerful browser automation capabilities with coordinated multi-agent workflows.
 
 ## Files Created
 
@@ -131,7 +131,7 @@ npm install
 cp .env.example .env
 # Edit .env and add your ANTHROPIC_API_KEY
 
-# 3. Start LightBrowser
+# 3. Start Holly
 npm start
 ```
 
@@ -161,7 +161,7 @@ npm start
 ## Architecture
 
 ```
-LightBrowser (Electron)
+Holly (Electron)
     ↓
 Jarvis (AI Assistant)
     ↓

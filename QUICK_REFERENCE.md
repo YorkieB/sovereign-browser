@@ -4,7 +4,7 @@
 
 ```bash
 # 1. Install dependencies
-cd LightBrowser
+cd Holly
 npm install
 
 # 2. Set your API key (Windows)

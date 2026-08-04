@@ -5,7 +5,7 @@
 ### All Deliverables Verified ✓
 
 ```
-LightBrowser Multi-Agent Integration
+Holly Multi-Agent Integration
 ├── [✅] Agent Modules (5 files)
 │   ├── agent-orchestrator.js
 │   ├── browser-use-agent.js
@@ -52,7 +52,7 @@ LightBrowser Multi-Agent Integration
 
 ### 1. Launch the Application
 ```bash
-cd c:\Users\conta\Webex\LightBrowser
+cd c:\Users\conta\Webex\Holly
 npm start
 ```
 
@@ -86,7 +86,7 @@ window.electronAPI.invoke('jarvis:workflow:research', {
 
 ### Option 2: Production Mode (5 minutes)
 1. Get API key from Claude at: https://console.anthropic.com
-2. Create `.env` file in LightBrowser folder:
+2. Create `.env` file in Holly folder:
    ```
    ANTHROPIC_API_KEY=sk-your-key-here
    ```
@@ -193,7 +193,7 @@ You'll know it's working when you see:
 
 ✅ **On Launch**
 - Electron window opens
-- Light Browser interface loads
+- HOLLY interface loads
 - Agent panel visible in right sidebar
 - 4 agent cards displaying
 

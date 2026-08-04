@@ -22,7 +22,7 @@ console.log(`
    $ cp .env.example .env  // [NRS-1503] Copy example config
    $ # Edit .env and add your ANTHROPIC_API_KEY  // [NRS-1503] Add API credentials
 
-3. Start LightBrowser:  // [NRS-1503] Application start
+3. Start Holly:  // [NRS-1503] Application start
    $ npm start  // [NRS-1503] Start development server
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -142,7 +142,7 @@ Specific component:  // [NRS-1001] Component-specific logging
 ⚡ FIRST WORKFLOW TEST  // [NRS-1001] Quick test procedure
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. Start LightBrowser: npm start  // [NRS-1503] Start application
+1. Start Holly: npm start  // [NRS-1503] Start application
 2. Open DevTools: F12 or Ctrl+Shift+I  // [NRS-1503] Open console
 3. Paste this in console:  // [NRS-1001] Test command
 

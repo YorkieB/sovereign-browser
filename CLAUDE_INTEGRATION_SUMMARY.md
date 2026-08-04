@@ -86,7 +86,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 ## File Structure
 
 ```
-LightBrowser/
+Holly/
 ├── agents/
 │   ├── browser-use-agent.js          ← Claude-powered agent
 │   ├── example-claude-usage.js        ← Working examples

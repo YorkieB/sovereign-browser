@@ -1,5 +1,5 @@
 {
-	"name": "light-browser",
+	"name": "holly",
 	"version": "0.1.0",
 	"description": "Lightweight web browser experiment built with Electron",
 	"main": "main.js",
@@ -10,8 +10,8 @@
 	"author": "",
 	"license": "MIT",
 	"build": {
-		"appId": "com.lightbrowser.app",
-		"productName": "Light Browser",
+		"appId": "com.holly.app",
+		"productName": "HOLLY",
 		"files": [
 			"main.js",
 			"preload.js",
@@ -39,7 +39,7 @@
 			"allowToChangeInstallationDirectory": true,
 			"createDesktopShortcut": true,
 			"createStartMenuShortcut": true,
-			"shortcutName": "Light Browser"
+			"shortcutName": "HOLLY"
 		}
 	},
 	"devDependencies": {

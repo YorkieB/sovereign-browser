@@ -60,7 +60,7 @@ $env:CLAUDE_API_KEY = "your-api-key-from-console.anthropic.com"
 
 ### 2️⃣ Test the Integration
 ```bash
-cd LightBrowser
+cd Holly
 node agents/example-claude-usage.js
 ```
 
@@ -156,7 +156,7 @@ ANTHROPIC_API_KEY=sk-ant-... # Alternative to CLAUDE_API_KEY
 ## Project Structure
 
 ```
-LightBrowser/
+Holly/
 ├── agents/
 │   ├── browser-use-agent.js          ← Claude integration
 │   ├── example-claude-usage.js        ← Examples

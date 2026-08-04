@@ -187,14 +187,14 @@ FILE LOCATIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Core Files:
-  c:\Users\conta\Webex\LightBrowser\agents\browser-use-agent.js
-  c:\Users\conta\Webex\LightBrowser\browser-automation-manager.js
-  c:\Users\conta\Webex\LightBrowser\src\automation-ui.js
+  c:\Users\conta\Webex\Holly\agents\browser-use-agent.js
+  c:\Users\conta\Webex\Holly\browser-automation-manager.js
+  c:\Users\conta\Webex\Holly\src\automation-ui.js
 
 Documentation:
-  c:\Users\conta\Webex\LightBrowser\README_CLAUDE.md
-  c:\Users\conta\Webex\LightBrowser\CLAUDE_SETUP.md
-  c:\Users\conta\Webex\LightBrowser\QUICK_REFERENCE.md
+  c:\Users\conta\Webex\Holly\README_CLAUDE.md
+  c:\Users\conta\Webex\Holly\CLAUDE_SETUP.md
+  c:\Users\conta\Webex\Holly\QUICK_REFERENCE.md
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

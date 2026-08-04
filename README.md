@@ -1,4 +1,4 @@
-﻿# Light Browser
+# HOLLY
 
 A lightweight experimental web browser built with Electron. Includes tabs, address bar, back/forward/reload, bookmarks, history, and basic downloads.
 
@@ -7,7 +7,7 @@ A lightweight experimental web browser built with Electron. Includes tabs, addre
 
 ## Run
 ```powershell
-cd LightBrowser
+cd Holly
 npm install
 npm start
 ```

@@ -14,7 +14,7 @@ console.log(`
 ✅ STEP 1: Install Dependencies  // [NRS-1503] Install packages
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Run this command in the LightBrowser directory:  // [NRS-1503] Installation instruction
+Run this command in the Holly directory:  // [NRS-1503] Installation instruction
 
   npm install  // [NRS-1503] NPM install command
 
@@ -29,7 +29,7 @@ This installs:  // [NRS-1503] Dependency list
 ✅ STEP 2: Create .env File  // [NRS-1503] Environment configuration
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Create a file named .env in the LightBrowser root directory:  // [NRS-1503] File creation
+Create a file named .env in the Holly root directory:  // [NRS-1503] File creation
 
   ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxxx  // [NRS-1001] API key configuration
   DEBUG=jarvis:*  // [NRS-1001] Debug logging
@@ -43,7 +43,7 @@ Where sk-ant-... is your Anthropic API key.  // [NRS-1001] Key format info
 
 ═══════════════════════════════════════════════════════════════════════
 
-✅ STEP 3: Start LightBrowser  // [NRS-1503] Application start
+✅ STEP 3: Start Holly  // [NRS-1503] Application start
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Start the application:  // [NRS-1503] Start instruction
@@ -52,7 +52,7 @@ Start the application:  // [NRS-1503] Start instruction
 
 You should see:  // [NRS-1001] Expected output
   ✓ Electron window opens  // [NRS-1503] Electron UI
-  ✓ LightBrowser UI loads  // [NRS-1301] Browser interface
+  ✓ Holly UI loads  // [NRS-1301] Browser interface
   ✓ Jarvis Agent Panel visible in sidebar  // [NRS-1001] Jarvis UI
   ✓ 4 agent cards (Researcher, Extractor, Automator, Analyst)  // [NRS-1102] Agent display
 
@@ -61,7 +61,7 @@ You should see:  // [NRS-1001] Expected output
 ✅ STEP 4: Test the Integration  // [NRS-1001] Integration testing
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-With LightBrowser running:  // [NRS-1001] Test instruction
+With Holly running:  // [NRS-1001] Test instruction
 
 1. Open DevTools: Press F12 or Ctrl+Shift+I  // [NRS-1301] Developer tools
 

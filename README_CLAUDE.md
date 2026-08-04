@@ -174,7 +174,7 @@ const agent = new BrowserUseAgent({
 ## 📁 Project Structure
 
 ```
-LightBrowser/
+Holly/
 ├── agents/
 │   ├── browser-use-agent.js          ← Claude integration
 │   ├── example-claude-usage.js        ← Examples

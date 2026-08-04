@@ -1,5 +1,5 @@
 /** // [NRS-1101]
- * Browser Automation Integration for Light Browser // [NRS-1101]
+ * Browser Automation Integration for HOLLY // [NRS-1101]
  * Shows how to integrate Claude-powered browser automation with your Electron app // [NRS-1101]
  */ // [NRS-1101]
 

@@ -195,7 +195,7 @@ RESOURCES:
 ═══════════════════════════════════════════════════════════════════════════════
 
 PROJECT LOCATION:
-  c:\Users\conta\Webex\LightBrowser
+  c:\Users\conta\Webex\Holly
 
 STATUS: ✅ COMPLETE AND READY TO USE
 

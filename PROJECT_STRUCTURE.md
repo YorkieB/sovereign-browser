@@ -1,4 +1,4 @@
-LightBrowser/
+Holly/
 ├── agents/                          ← NEW: Multi-agent system
 │   ├── agent-orchestrator.js       # Core orchestration engine
 │   ├── browser-use-agent.js        # Browser automation

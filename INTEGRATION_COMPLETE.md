@@ -2,7 +2,7 @@
 
 ## ✅ What You Got
 
-I've integrated **Anthropic's Browser Use** with **multi-agent orchestration** into your LightBrowser project. Jarvis now has the power of coordinated multi-agent workflows for intelligent browser automation.
+I've integrated **Anthropic's Browser Use** with **multi-agent orchestration** into your Holly project. Jarvis now has the power of coordinated multi-agent workflows for intelligent browser automation.
 
 ### 📊 Integration Summary
 
@@ -234,7 +234,7 @@ Unlike simple automation scripts, this system provides:
 Your integration is complete when:
 - ✅ `npm install` works without errors
 - ✅ `.env` file has your API key
-- ✅ `npm start` launches LightBrowser
+- ✅ `npm start` launches Holly
 - ✅ DevTools console can call IPC methods
 - ✅ First workflow executes successfully
 

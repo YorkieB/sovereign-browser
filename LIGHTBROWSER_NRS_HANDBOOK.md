@@ -1,7 +1,7 @@
-# LIGHTBROWSER NRS HANDBOOK
+# HOLLY NRS HANDBOOK
 ## Numeric Reference System for Browser Automation (NRS-10xx to NRS-14xx)
 
-**Project:** LightBrowser  
+**Project:** Holly  
 **Category Range:** NRS-10xx to NRS-14xx  
 **Total Codes:** 33 micro-codes across 5 categories  
 **Files Covered:** 13 JavaScript/Node.js files  
@@ -977,7 +977,7 @@ Environment variables and API keys
 - **Total Micro-codes:** 33
 - **Files Covered:** 13 JavaScript files
 - **Total Lines:** ~1,500+ lines of code
-- **Coverage:** 100% of LightBrowser project
+- **Coverage:** 100% of Holly project
 
 ---
 

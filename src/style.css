@@ -111,7 +111,32 @@ body {
 	gap: 6px;
 } /* [NRS-1301] */
 #toolbar button {
-	padding: 4px 8px;
+	/* [SovereignBrowser] Circular icon buttons. Previously only padding was
+	   set, so these fell back to the platform's default square control. */
+	appearance: none;
+	-webkit-appearance: none;
+	border: none;
+	background: transparent;
+	color: #3c3c3c;
+	font-size: 15px;
+	line-height: 1;
+	min-width: 34px;
+	height: 34px;
+	padding: 0 9px;
+	border-radius: 999px;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+#toolbar button:focus-visible {
+	outline: 2px solid #667eea;
+	outline-offset: 1px;
+}
+#toolbar button:disabled {
+	opacity: 0.35;
+	cursor: default;
 } /* [NRS-1301] */
 #omnibox {
 	flex: 1;
@@ -1256,16 +1281,16 @@ body.jarvis-open #content {
 } /* [NRS-1301] */
 
 #toolbar button:hover {
-	/* [NRS-1301] */
-	transform: scale(1.05); /* [NRS-1301] */
-	background: #e8e8e8; /* [NRS-1301] */
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); /* [NRS-1301] */
-} /* [NRS-1301] */
+	/* [SovereignBrowser] Quiet hover: a soft circle, no scaling or shadow. */
+	background: rgba(0, 0, 0, 0.07);
+	box-shadow: none;
+	transform: none;
+}
 
 #toolbar button:active {
-	/* [NRS-1301] */
-	transform: scale(0.95); /* [NRS-1301] */
-} /* [NRS-1301] */
+	background: rgba(0, 0, 0, 0.12);
+	transform: scale(0.94);
+}
 
 /* Bookmark Star Animation */ /* [NRS-1301] */
 .bookmark {
@@ -2184,3 +2209,69 @@ textarea:focus {
 	/* [NRS-1301] */
 	caret-color: auto !important; /* [NRS-1301] */
 } /* [NRS-1301] */
+
+/* ===== [SovereignBrowser] Edge-style toolbar ===== */
+#toolbar { padding: 6px 10px; gap: 6px; }
+.omnibox-container {
+	border-radius: 999px;
+	padding: 3px 12px;
+	background: #fff;
+	border: 1px solid #d6d6d6;
+}
+.omnibox-container:focus-within {
+	transform: none;
+	border-color: #bcbcbc;
+	box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+}
+.omnibox-suggestions { border-radius: 12px; border: 1px solid #ddd; margin-top: 6px; overflow: hidden; }
+
+.ovf-wrap { position: relative; display: inline-flex; }
+.overflow-menu {
+	position: absolute;
+	top: calc(100% + 8px);
+	right: 0;
+	min-width: 260px;
+	background: #fff;
+	border: 1px solid #dcdcdc;
+	border-radius: 12px;
+	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+	padding: 6px;
+	display: none;
+	z-index: 6000;
+}
+.overflow-menu.open { display: block; }
+.ovf-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 4px 8px;
+	border-radius: 8px;
+	cursor: pointer;
+}
+.ovf-row:hover { background: rgba(0, 0, 0, 0.06); }
+.ovf-label { font-size: 14px; color: #2f2f2f; white-space: nowrap; }
+.ovf-sep { height: 1px; background: #e6e6e6; margin: 6px 4px; }
+#overflow-menu button { pointer-events: none; }
+#btn-overflow { font-size: 20px; }
+
+/* [SovereignBrowser] Larger toolbar controls */
+#toolbar { padding: 8px 12px; gap: 8px; }
+#toolbar button {
+	min-width: 42px;
+	height: 42px;
+	padding: 0 11px;
+	font-size: 20px;
+}
+#btn-overflow { font-size: 24px; }
+#toolbar .bookmark { font-size: 21px; }
+.omnibox-container { padding: 4px 14px; }
+#omnibox { font-size: 15px; padding: 9px 8px; }
+.lock-icon { font-size: 16px; }
+/* keep menu rows compact even though toolbar buttons grew */
+#overflow-menu button {
+	min-width: 34px;
+	height: 34px;
+	font-size: 17px;
+	padding: 0 8px;
+}
+.ovf-label { font-size: 14.5px; }

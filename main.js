@@ -60,7 +60,7 @@ function createWindow() {
     // [NRS-1001]
     width: 1200, // [NRS-1001]
     height: 800, // [NRS-1001]
-    title: 'Light Browser', // [NRS-1001]
+    title: 'HOLLY', // [NRS-1001]
     useContentSize: true, // [NRS-1001]
     autoHideMenuBar: true, // [NRS-1001]
     webPreferences: {
@@ -203,11 +203,11 @@ app.commandLine.appendSwitch('disable-gpu');
     }
     new BrowserAutomationManager(mainWindow); // [NRS-1001]
   } catch (err) {
-    console.error('[LightBrowser] Startup failed:', err);
+    console.error('[Holly] Startup failed:', err);
     try {
-      dialog.showErrorBox('Light Browser failed to start', String(err && err.stack ? err.stack : err));
+      dialog.showErrorBox('HOLLY failed to start', String(err && err.stack ? err.stack : err));
     } catch (dialogErr) {
-      console.error('[LightBrowser] Could not display error dialog:', dialogErr);
+      console.error('[Holly] Could not display error dialog:', dialogErr);
     }
     app.quit();
   }
