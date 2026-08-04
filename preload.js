@@ -39,4 +39,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	}, // [NRS-1001]
 	// Generic invoke to reach Jarvis IPC handlers and future endpoints // [NRS-1001]
 	invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args), // [NRS-1501] Generic IPC invoke wrapper
+	// [SovereignBrowser] Main->renderer event bridge for the WebContentsView
+	// tab backing. Whitelisted channels only; returns an unsubscribe function.
+	on: (channel, listener) => {
+		const allowed = new Set([
+			"tab:event",
+			"holly:open-url-in-new-tab",
+			"ext:create-tab",
+			"ext:select-tab",
+			"ext:remove-tab",
+		]);
+		if (!allowed.has(channel)) {
+			throw new Error("electronAPI.on: channel not allowed: " + channel);
+		}
+		const wrapped = (_event, payload) => listener(payload);
+		ipcRenderer.on(channel, wrapped);
+		return () => ipcRenderer.removeListener(channel, wrapped);
+	},
 }); // [NRS-1001]

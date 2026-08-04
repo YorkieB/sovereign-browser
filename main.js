@@ -13,6 +13,8 @@ const { setupJarvisAgentHandlers } = require('./agents/jarvis-integration'); // 
 const BrowserAutomationManager = require('./browser-automation-manager'); // [NRS-1101] Browser automation controller
 const { ElectronChromeExtensions } = require('electron-chrome-extensions'); // [SovereignBrowser]
 const { installChromeWebStore } = require('electron-chrome-web-store'); // [SovereignBrowser]
+const { createTabViewManager } = require('./tab-view-manager'); // [SovereignBrowser] WebContentsView tab backing
+let tabViews = null; // [SovereignBrowser] set in createWindow
 require('dotenv').config(); // [NRS-1601] Load environment variables
 
 // Set OpenAI API key if not already in environment // [NRS-1001]
@@ -87,6 +89,17 @@ function createWindow() {
     }
   });
 
+  // [SovereignBrowser] WebContentsView tab backing. Inert until the renderer
+  // opts in by creating tabs through the tab:* IPC channels.
+  try {
+    tabViews = createTabViewManager(win, {
+      getSession: (incognito) => incognito ? session.fromPartition('holly-incognito') : browsingSession(),
+      getExtensions: () => chromeExtensions,
+      notifyRenderer: tellRenderer,
+    });
+  } catch (err) {
+    console.error('[Holly] Tab view manager failed to initialise:', err);
+  }
   win.setMenuBarVisibility(false); // [NRS-1303] Hide menu bar
   win.loadFile(path.join(__dirname, 'src', 'index.html')); // [NRS-1301] Load main HTML
   try {
@@ -587,10 +600,12 @@ async function setupChromeExtensions() {
       return [win ? win.webContents : null, win];
     },
     selectTab(tab) {
-      tellRenderer('ext:select-tab', { webContentsId: tab.id });
+      const tabId = tabViews ? tabViews.tabIdForWebContents(tab.id) : null;
+      tellRenderer('ext:select-tab', { tabId, webContentsId: tab.id });
     },
     removeTab(tab) {
-      tellRenderer('ext:remove-tab', { webContentsId: tab.id });
+      const tabId = tabViews ? tabViews.tabIdForWebContents(tab.id) : null;
+      tellRenderer('ext:remove-tab', { tabId, webContentsId: tab.id });
     },
     createWindow(details) {
       tellRenderer('ext:create-tab', { url: (details.url && details.url[0]) || 'about:blank' });
@@ -598,6 +613,9 @@ async function setupChromeExtensions() {
     },
   });
 
+  // [SovereignBrowser] Views created before this point could not register with
+  // the extension system; register them now.
+  if (tabViews) { tabViews.attachExtensions(chromeExtensions); }
   await installChromeWebStore({
     session: browserSession,
     modulePath: path.join(__dirname, 'node_modules', 'electron-chrome-web-store'),
