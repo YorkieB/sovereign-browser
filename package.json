@@ -8,7 +8,7 @@
 		"build": "electron-builder --win"
 	},
 	"author": "",
-	"license": "MIT",
+	"license": "GPL-3.0",
 	"build": {
 		"appId": "com.holly.app",
 		"productName": "HOLLY",
@@ -50,7 +50,10 @@
 		"@anthropic-ai/sdk": "^0.24.0",
 		"debug": "^4.3.4",
 		"dotenv": "^16.0.3",
+		"electron-chrome-extensions": "^4.9.0",
+		"electron-chrome-web-store": "^0.13.0",
 		"openai": "^6.16.0",
 		"winreg": "^1.2.5"
 	}
 }
+

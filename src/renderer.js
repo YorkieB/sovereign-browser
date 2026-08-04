@@ -1227,7 +1227,7 @@ async function fetchBraveSuggestions(query) {
 			} catch (err) {
 				console.warn("[context-menu] edit command failed:", err.message);
 			}
-		}, 0);
+		}, 30);
 	}
 
 	function handleWebviewContextAction(action) {
@@ -1329,6 +1329,16 @@ async function fetchBraveSuggestions(query) {
 	} // [NRS-1301]
 
 	document.addEventListener("click", hideWebviewContextMenu); // [NRS-1301]
+
+	// [SovereignBrowser] Keep focus inside the page while the menu is used.
+	// Cut/copy/paste act on whatever is focused INSIDE the webview. A normal
+	// click on host UI blurs the page first, leaving the command with no
+	// target - which is why paste silently did nothing. Suppressing the
+	// default mousedown behaviour stops the focus change; the click still
+	// fires, so the menu keeps working.
+	webviewContextMenu.addEventListener("mousedown", (e) => {
+		e.preventDefault();
+	});
 
 	webviewContextMenu.querySelectorAll(".context-option").forEach((option) => {
 		// [NRS-1301]
@@ -1521,10 +1531,6 @@ async function fetchBraveSuggestions(query) {
 		} // [NRS-1301]
 		webview.setAttribute("allowpopups", ""); // [NRS-1301]
 		webview.setAttribute("preload", "../preload.js"); // [NRS-1301]
-		webview.setAttribute(
-			"useragent",
-			"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-		); // [NRS-1301]
 		webview.setAttribute("websecurity", "yes"); // [NRS-1301]
 		webview.setAttribute("nodeintegration", "no"); // [NRS-1301]
 		webview.className = "webview"; // [NRS-1301]
@@ -1561,11 +1567,18 @@ async function fetchBraveSuggestions(query) {
         window.fbq = window.fbq || function() {}; // [NRS-1301]
         window.gtag = window.gtag || function() {}; // [NRS-1301]
         window.dataLayer = window.dataLayer || []; // [NRS-1301]
+        // [SovereignBrowser] Return nothing. The script's completion value
+        // was window.dataLayer, an array analytics fills with functions and
+        // DOM references. Electron must serialise the result across IPC and
+        // fails with "An object could not be cloned".
+        undefined;
       `; // [NRS-1301]
 
 			try {
 				// [NRS-1301]
-				webview.executeJavaScript(script); // [NRS-1301]
+				webview.executeJavaScript(script).catch((err) => {
+					console.warn("[webview] guard script injection failed:", err.message);
+				}); // [SovereignBrowser]
 			} catch (err) {
 				// [NRS-1301]
 				console.log("Script injection skipped"); // [NRS-1301]
@@ -1591,6 +1604,11 @@ async function fetchBraveSuggestions(query) {
         window.fbq = window.fbq || function() {}; // [NRS-1301]
         window.gtag = window.gtag || function() {}; // [NRS-1301]
         window.dataLayer = window.dataLayer || []; // [NRS-1301]
+        // [SovereignBrowser] Return nothing. The script's completion value
+        // was window.dataLayer, an array analytics fills with functions and
+        // DOM references. Electron must serialise the result across IPC and
+        // fails with "An object could not be cloned".
+        undefined;
       `,
 					true,
 				)
@@ -4761,14 +4779,81 @@ omnibox.addEventListener("input", (e) => {
 		}
 	})(); // [NRS-1301]
 
+	// [SovereignBrowser] Chrome extensions installed from the Web Store are
+	// held by the Electron session, not by the homegrown css/js list in
+	// localStorage, so the dialog could never see them. Ask main for the real
+	// list and show it above the custom ones.
+	async function renderChromeExtensions() {
+		if (!extensionsList) { return; }
+		let list = [];
+		try {
+			list = await globalThis.electronAPI.invoke("holly:extensions:list");
+		} catch (err) {
+			console.warn("[extensions] could not list Chrome extensions:", err.message);
+			return;
+		}
+		if (!Array.isArray(list) || !list.length) { return; }
+
+		const heading = document.createElement("h3");
+		heading.textContent = "Chrome extensions";
+		heading.style.margin = "4px 0 8px";
+		extensionsList.appendChild(heading);
+
+		list.forEach((ext) => {
+			const card = document.createElement("div");
+			card.className = "extension-card";
+
+			const title = document.createElement("div");
+			title.style.fontWeight = "600";
+			title.textContent = ext.name + "  v" + ext.version;
+
+			const desc = document.createElement("div");
+			desc.style.fontSize = "12px";
+			desc.style.opacity = "0.75";
+			desc.textContent = ext.description || ext.id;
+
+			const remove = document.createElement("button");
+			remove.className = "setting-btn";
+			remove.textContent = "Remove";
+			remove.style.marginTop = "6px";
+			remove.addEventListener("click", async () => {
+				remove.disabled = true;
+				try {
+					const res = await globalThis.electronAPI.invoke("holly:extensions:remove", ext.id);
+					if (res && res.ok) {
+						renderExtensions();
+						showSuccess("Removed " + ext.name);
+					} else {
+						remove.disabled = false;
+						console.warn("[extensions] remove failed:", res && res.error);
+					}
+				} catch (err) {
+					remove.disabled = false;
+					console.warn("[extensions] remove failed:", err.message);
+				}
+			});
+
+			card.appendChild(title);
+			card.appendChild(desc);
+			card.appendChild(remove);
+			extensionsList.appendChild(card);
+		});
+
+		const sep = document.createElement("h3");
+		sep.textContent = "Custom extensions";
+		sep.style.margin = "14px 0 8px";
+		extensionsList.appendChild(sep);
+	}
+
 	function renderExtensions() {
 		// [NRS-1301]
 		if (!extensionsList) return; // [NRS-1301]
 		extensionsList.innerHTML = ""; // [NRS-1301]
+		renderChromeExtensions(); // [SovereignBrowser] real Chrome extensions first
 		if (!extensions.length) {
 			// [NRS-1301]
 			const p = document.createElement("p"); // [NRS-1301]
-			p.textContent = "No extensions installed yet."; // [NRS-1301]
+			p.textContent = "No custom extensions yet."; // [SovereignBrowser]
 			p.style.color = "#666"; // [NRS-1301]
 			p.style.padding = "8px"; // [NRS-1301]
 			extensionsList.appendChild(p); // [NRS-1301]

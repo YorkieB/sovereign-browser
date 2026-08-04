@@ -11,6 +11,8 @@ const path = require('node:path'); // [NRS-1503] Path utilities
 const fs = require('node:fs'); // [NRS-1503] File system access
 const { setupJarvisAgentHandlers } = require('./agents/jarvis-integration'); // [NRS-1001] Jarvis AI agent integration
 const BrowserAutomationManager = require('./browser-automation-manager'); // [NRS-1101] Browser automation controller
+const { ElectronChromeExtensions } = require('electron-chrome-extensions'); // [SovereignBrowser]
+const { installChromeWebStore } = require('electron-chrome-web-store'); // [SovereignBrowser]
 require('dotenv').config(); // [NRS-1601] Load environment variables
 
 // Set OpenAI API key if not already in environment // [NRS-1001]
@@ -69,8 +71,21 @@ function createWindow() {
       contextIsolation: true, // [NRS-1001]
       nodeIntegration: false, // [NRS-1001]
       webviewTag: true, // [NRS-1001]
+      session: browsingSession(), // [SovereignBrowser] same session as tabs
+      sandbox: true, // [SovereignBrowser] required for extension preload scripts
     }, // [NRS-1001]
   }); // [NRS-1501] Create browser window with security settings
+
+  // [SovereignBrowser] Every <webview> is a tab as far as extensions are
+  // concerned. Register each one as it attaches so chrome.tabs, badges and
+  // browser actions resolve against real tabs.
+  win.webContents.on('did-attach-webview', (event, guestContents) => {
+    try {
+      if (chromeExtensions) { chromeExtensions.addTab(guestContents, win); }
+    } catch (err) {
+      console.warn('[Holly] Could not register webview with extensions:', err.message);
+    }
+  });
 
   win.setMenuBarVisibility(false); // [NRS-1303] Hide menu bar
   win.loadFile(path.join(__dirname, 'src', 'index.html')); // [NRS-1301] Load main HTML
@@ -115,6 +130,16 @@ function createWindow() {
 // [SovereignBrowser] The session every normal tab uses. Must match the
 // partition set on the <webview> elements in renderer.js, or downloads and
 // extensions attach to a session no tab is actually using.
+// [SovereignBrowser] Electron's default user agent contains an "Electron/x.y.z"
+// token, and the webviews were additionally hardcoded to Chrome/131 while the
+// bundled Chromium is far newer. Sites that check for embedded frameworks - and
+// Google's sign-in in particular - reject both. Build one honest Chrome UA from
+// the actual Chromium version and let every webview inherit it, so this stays
+// correct automatically on future Electron upgrades.
+const CHROME_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' +
+  'Chrome/' + process.versions.chrome + ' Safari/537.36';
+app.userAgentFallback = CHROME_UA;
 const BROWSING_PARTITION = 'persist:holly';
 function browsingSession() {
   return session.fromPartition(BROWSING_PARTITION);
@@ -198,11 +223,106 @@ app.commandLine.appendSwitch('disable-application-cache');
 app.commandLine.appendSwitch('disable-gpu');
 // =========================================================================
 
+// [SovereignBrowser] Chrome extension support.
+// Electron alone only exposes a DevTools-focused subset of the extension APIs
+// and knows nothing about tabs, popups or browser actions.
+// electron-chrome-extensions supplies those; electron-chrome-web-store adds
+// installation from the Chrome Web Store and remembers what is installed,
+// which Electron does not do on its own.
+let chromeExtensions = null;
+
+function mainWindow() {
+  return BrowserWindow.getAllWindows()[0] || null;
+}
+
+// Extensions ask the browser to open, select and close tabs. HOLLY's tabs live
+// in the renderer, so forward these as IPC messages it already understands.
+function tellRenderer(channel, payload) {
+  const win = mainWindow();
+  if (win && !win.webContents.isDestroyed()) {
+    win.webContents.send(channel, payload);
+  }
+}
+
+// [SovereignBrowser] The renderer's Extensions dialog was built around a
+// homegrown css/js injection list in localStorage and knows nothing about real
+// Chrome extensions. Expose what the session has actually loaded.
+ipcMain.handle('holly:extensions:list', () => {
+  try {
+    return browsingSession()
+      .getAllExtensions()
+      .map((e) => ({
+        id: e.id,
+        name: e.name,
+        version: e.version,
+        description: (e.manifest && e.manifest.description) || '',
+providers: undefined,
+      }));
+  } catch (err) {
+    console.warn('[Holly] Could not list extensions:', err.message);
+    return [];
+  }
+});
+
+ipcMain.handle('holly:extensions:remove', (event, id) => {
+  try {
+    const s = browsingSession();
+    if (s.extensions) { s.extensions.removeExtension(id); } else { s.removeExtension(id); }
+    return { ok: true };
+  } catch (err) {
+    console.warn('[Holly] Could not remove extension:', err.message);
+    return { ok: false, error: err.message };
+  }
+});
+
+async function setupChromeExtensions() {
+  const browserSession = browsingSession();
+
+  chromeExtensions = new ElectronChromeExtensions({
+    // [SovereignBrowser] electron-chrome-extensions is dual licensed:
+    // GPL-3.0 or a paid Patron licence. HOLLY is GPL-3.0.
+    license: 'GPL-3.0',
+    session: browserSession,
+    createTab(details) {
+      tellRenderer('ext:create-tab', { url: details.url || 'about:blank' });
+      const win = mainWindow();
+      return [win ? win.webContents : null, win];
+    },
+    selectTab(tab) {
+      tellRenderer('ext:select-tab', { webContentsId: tab.id });
+    },
+    removeTab(tab) {
+      tellRenderer('ext:remove-tab', { webContentsId: tab.id });
+    },
+    createWindow(details) {
+      tellRenderer('ext:create-tab', { url: (details.url && details.url[0]) || 'about:blank' });
+      return mainWindow();
+    },
+  });
+
+  // Enables chromewebstore.google.com install buttons and restores whatever
+  // was installed previously.
+  await installChromeWebStore({
+    session: browserSession,
+    modulePath: path.join(__dirname, 'node_modules', 'electron-chrome-web-store'),
+  });
+
+  const loaded = browserSession.extensions
+    ? browserSession.extensions.getAllExtensions()
+    : browserSession.getAllExtensions();
+  console.log('[Holly] Chrome extension support ready. Loaded:', loaded.length);
+  loaded.forEach((e) => console.log('   -', e.name, e.version, e.id));
+}
 // App initialization - wrapped in async IIFE (CommonJS has no top-level await) // [NRS-1001]
 (async () => {
   try {
     await app.whenReady(); // [NRS-1001]
     await loadExtensions(); // [NRS-1001]
+    try {
+      await setupChromeExtensions(); // [SovereignBrowser]
+    } catch (err) {
+      console.error('[Holly] Chrome extension support failed to initialise:', err);
+    }
     setupJarvisAgentHandlers(); // Initialize multi-agent handlers // [NRS-1001]
     createWindow(); // [NRS-1001]
     const mainWindow = BrowserWindow.getAllWindows()[0]; // [NRS-1001]
@@ -358,6 +478,11 @@ ipcMain.handle('mic:open-settings', async () => {
     return { opened: false, error: err?.message || 'Unknown error' }; // [NRS-1001]
   } // [NRS-1001]
 }); // [NRS-1001]
+
+
+
+
+
 
 
 
