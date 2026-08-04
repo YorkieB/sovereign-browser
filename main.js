@@ -175,6 +175,19 @@ try {
   console.error('[SovereignBrowser] Could not seed home page:', err);
 }
 
+// [SovereignBrowser] The preload runs sandboxed (Electron >=20 default), so it
+// cannot use node:path or process.env. Compute the home URL here, where full
+// Node is available, and hand it over synchronously on request.
+const { pathToFileURL } = require('node:url');
+const HOME_URL = pathToFileURL(HOME_FILE).href;
+console.log('[SB-DIAG] HOME_FILE   =', HOME_FILE);
+console.log('[SB-DIAG] HOME_URL    =', HOME_URL);
+console.log('[SB-DIAG] file exists =', fs.existsSync(HOME_FILE));
+ipcMain.handle('sb:log', (event, ...args) => { console.log('[SB-RENDERER]', ...args); });
+ipcMain.on('sb:get-home-url', (event) => {
+  console.log('[SB-DIAG] renderer asked for home url -> serving', HOME_URL);
+  event.returnValue = HOME_URL;
+});
 app.commandLine.appendSwitch('disk-cache-dir', cacheDir);
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 app.commandLine.appendSwitch('disable-application-cache');
@@ -341,3 +354,6 @@ ipcMain.handle('mic:open-settings', async () => {
     return { opened: false, error: err?.message || 'Unknown error' }; // [NRS-1001]
   } // [NRS-1001]
 }); // [NRS-1001]
+
+
+

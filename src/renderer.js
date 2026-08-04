@@ -1,3 +1,10 @@
+globalThis.addEventListener("error", (ev) => {
+	globalThis.electronAPI?.invoke?.("sb:log", "UNCAUGHT", ev.message, "@", ev.filename, "line", ev.lineno);
+});
+globalThis.addEventListener("unhandledrejection", (ev) => {
+	globalThis.electronAPI?.invoke?.("sb:log", "UNHANDLED-REJECTION", String(ev.reason));
+});
+globalThis.electronAPI?.invoke?.("sb:log", "SB-BOOT renderer start");
 // === Sovereign Browser: local LLM configuration =============================
 // Chat runs against LM Studio on this machine. No cloud calls, no API key
 // leaves this PC. Change LLM_MODEL to any model id LM Studio is serving.
@@ -446,7 +453,8 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 	function setOmnibox(url) {
 		// [NRS-1301]
 		const value = url || ""; // [NRS-1301]
-		omnibox.value = value; // const isSecure = /^https:\/\//i.test(value); // [NRS-1301]
+		omnibox.value = value; // [NRS-1301]
+		const isSecure = /^https:\/\//i.test(value); // [RESTORED]
 		if (omniboxContainer) omniboxContainer.classList.toggle("secure", isSecure); // [NRS-1301]
 		if (lockIcon) lockIcon.style.display = isSecure ? "inline" : "none"; // [NRS-1301]
 		updatePrivacyUI(value); // [NRS-1301]
@@ -464,7 +472,8 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 
 	function loadSiteSetting(origin) {
 		// [NRS-1301]
-		if (!origin) return { notificationsAllowed: true }; // return siteSettings[origin] || { notificationsAllowed: true }; // [NRS-1301]
+		if (!origin) return { notificationsAllowed: true }; // [NRS-1301]
+		return siteSettings[origin] || { notificationsAllowed: true }; // [RESTORED]
 	} // [NRS-1301]
 
 	function saveSiteSetting(origin, setting) {
@@ -478,7 +487,8 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 
 	function applySitePermissions(tab, origin) {
 		// [NRS-1301]
-		if (!tab || !origin) return; // const setting = loadSiteSetting(origin); // [NRS-1301]
+		if (!tab || !origin) return; // [NRS-1301]
+		const setting = loadSiteSetting(origin); // [RESTORED]
 		if (setting.notificationsAllowed) return; // [NRS-1301]
 		try {
 			// [NRS-1301]
@@ -493,6 +503,11 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
           } // [NRS-1301]
         })(); // [NRS-1301]
       `); // Inject notification blocking script // [NRS-1301]
+		} catch (err) {
+			console.warn('[SovereignBrowser] applySitePermissions failed:', err.message);
+		}
+	}
+
 
 			// Visual Status Indicators // [NRS-1301]
 			function showLoadingProgress() {
@@ -559,12 +574,11 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 				// [NRS-1301]
 				statusBar?.classList.remove("show"); // [NRS-1301]
 			} // [NRS-1301]
-		} catch {} // [NRS-1301]
-	} // [NRS-1301]
 
 	function updatePrivacyUI(url) {
 		// [NRS-1301]
-		const origin = getOrigin(url || ""); // const setting = loadSiteSetting(origin); // [NRS-1301]
+		const origin = getOrigin(url || ""); // [NRS-1301]
+		const setting = loadSiteSetting(origin); // [RESTORED]
 		if (privacySiteLabel) privacySiteLabel.textContent = origin ? `Site: ${origin}` : "Site: �"; // [NRS-1301]
 		if (toggleSiteNotifications)
 			toggleSiteNotifications.checked = setting.notificationsAllowed !== false; // [NRS-1301]
@@ -1366,24 +1380,30 @@ async function fetchBraveSuggestions(query) {
 		webview.addEventListener("found-in-page", (e) => {
 			// [NRS-1301]
 			currentFindResults.activeMatchOrdinal = e.result.activeMatchOrdinal || 0; // [NRS-1301]
-			currentFindResults.matches = e.result.matches || 0; // const displayOrdinal = currentFindResults.activeMatchOrdinal > 0 ? currentFindResults.activeMatchOrdinal : '�'; // [NRS-1301]
+			currentFindResults.matches = e.result.matches || 0; // [NRS-1301]
+			const displayOrdinal = currentFindResults.activeMatchOrdinal > 0 ? currentFindResults.activeMatchOrdinal : "-"; // [RESTORED]
 			findCounter.textContent = `${displayOrdinal} of ${currentFindResults.matches}`; // [NRS-1301]
 		}); // [NRS-1301]
 	} // [NRS-1301]
 
 	function createTab(initialUrl, options = {}) {
 		// [NRS-1301]
-		const activate = options.activate !== false; // const id = nextId++; // const tabEl = document.createElement('div'); // [NRS-1301]
+		const activate = options.activate !== false; // [NRS-1301]
+		const id = nextId++; // [RESTORED]
+		const tabEl = document.createElement("div"); // [RESTORED]
 		tabEl.className = "tab"; // [NRS-1301]
-		tabEl.dataset.id = String(id); // const titleEl = document.createElement('span'); // [NRS-1301]
+		tabEl.dataset.id = String(id); // [NRS-1301]
+		const titleEl = document.createElement("span"); // [RESTORED]
 		titleEl.className = "title"; // [NRS-1301]
-		titleEl.textContent = "New Tab"; // const closeEl = document.createElement('button'); // [NRS-1301]
+		titleEl.textContent = "New Tab"; // [NRS-1301]
+		const closeEl = document.createElement("button"); // [RESTORED]
 		closeEl.className = "close"; // [NRS-1301]
-		closeEl.textContent = "�"; // [NRS-1301]
+		closeEl.textContent = "×"; // [RESTORED - was mojibake]
 		closeEl.title = "Close Tab"; // [NRS-1301]
 		tabEl.appendChild(titleEl); // [NRS-1301]
 		tabEl.appendChild(closeEl); // [NRS-1301]
-		tabsEl.appendChild(tabEl); // const webview = document.createElement('webview'); // [NRS-1301]
+		tabsEl.appendChild(tabEl); // [NRS-1301]
+		const webview = document.createElement("webview"); // [RESTORED]
 		if (!options.incognito) {
 			// [NRS-1301]
 			webview.setAttribute("partition", `persist:tab-${id}`); // [NRS-1301]
@@ -1466,7 +1486,8 @@ async function fetchBraveSuggestions(query) {
 					true,
 				)
 				.catch(() => {}); // Inject error guard script with safe catch // [NRS-1301]
-		}); // const tab = { id, tabEl, titleEl, webview, group: null, incognito: !!options.incognito, pinned: false, muted: false }; // [NRS-1301]
+		}); // [NRS-1301]
+		const tab = { id, tabEl, titleEl, webview, group: null, incognito: !!options.incognito, pinned: false, muted: false }; // [RESTORED]
 		tabs.push(tab); // [NRS-1301]
 
 		if (options.group) applyGroup(tab, options.group); // [NRS-1301]
@@ -1508,8 +1529,10 @@ async function fetchBraveSuggestions(query) {
 				if (tab.id === activeTabId) {
 					// [NRS-1301]
 					hideLoadingProgress(); // [NRS-1301]
-					webview.classList.remove("loading"); // const url = webview.getURL?.() || webview.src || ''; // [NRS-1301]
-					applyExtensionsToWebview(webview, url); // const isSecure = /^https:\/\//i.test(url); // [NRS-1301]
+					webview.classList.remove("loading"); // [NRS-1301]
+					const url = webview.getURL?.() || webview.src || ""; // [RESTORED]
+					applyExtensionsToWebview(webview, url); // [NRS-1301]
+					const isSecure = /^https:\/\//i.test(url); // [RESTORED]
 					updateStatusBar("Page loaded", { secure: isSecure }); // [NRS-1301]
 				} // [NRS-1301]
 			}); // [NRS-1301]
@@ -1518,7 +1541,8 @@ async function fetchBraveSuggestions(query) {
 			// [NRS-1301]
 			setOmnibox(e.url); // [NRS-1301]
 			applySitePermissions(tab, getOrigin(e.url)); // [NRS-1301]
-			applyTrackingProtection(webview); // const isSecure = /^https:\/\//i.test(e.url); // [NRS-1301]
+			applyTrackingProtection(webview); // [NRS-1301]
+			const isSecure = /^https:\/\//i.test(e.url); // [RESTORED]
 			applyExtensionsToWebview(webview, e.url); // [NRS-1301]
 			if (tab.id === activeTabId) {
 				// [NRS-1301]
@@ -1551,7 +1575,8 @@ async function fetchBraveSuggestions(query) {
 				if (tab.id === activeTabId) {
 					// [NRS-1301]
 					hideLoadingProgress(); // [NRS-1301]
-					webview.classList.remove("loading"); // const url = webview.getURL?.() || webview.src || ''; // [NRS-1301]
+					webview.classList.remove("loading"); // [NRS-1301]
+					const url = webview.getURL?.() || webview.src || ""; // [RESTORED]
 					applyExtensionsToWebview(webview, url); // [NRS-1301]
 				} // [NRS-1301]
 			}); // [NRS-1301]
@@ -1595,7 +1620,14 @@ async function fetchBraveSuggestions(query) {
 		const url = initialUrl || DEFAULT_HOME; // [NRS-1301]
 		setTimeout(() => {
 			// [NRS-1301]
-			webview.src = url; // [NRS-1301]
+			webview.addEventListener("did-fail-load", (ev) => {
+	globalThis.electronAPI?.invoke?.("sb:log", "did-fail-load", ev.errorCode, ev.errorDescription, ev.validatedURL);
+});
+webview.addEventListener("did-finish-load", () => {
+	globalThis.electronAPI?.invoke?.("sb:log", "did-finish-load", webview.src);
+});
+globalThis.electronAPI?.invoke?.("sb:log", "creating tab with url =", url, "| DEFAULT_HOME =", DEFAULT_HOME);
+webview.src = url; // [NRS-1301]
 		}, 10); // [NRS-1301]
 
 		if (activate) setActiveTab(id); // else updateTabVisibility(); // [NRS-1301]
@@ -1613,7 +1645,8 @@ async function fetchBraveSuggestions(query) {
 		} // [NRS-1301]
 		tabs.forEach((t) => {
 			// [NRS-1301]
-			const isActive = t.id === activeTabId; // const isSplit = splitViewEnabled && t.id === splitPartnerId; // [NRS-1301]
+			const isActive = t.id === activeTabId; // [NRS-1301]
+			const isSplit = splitViewEnabled && t.id === splitPartnerId; // [RESTORED]
 			t.tabEl.classList.toggle("active", isActive); // [NRS-1301]
 			t.webview.classList.toggle("active", isActive); // [NRS-1301]
 			t.webview.classList.toggle("split-secondary", isSplit); // [NRS-1301]
@@ -4328,7 +4361,14 @@ btnHome.addEventListener("click", () => {
 		if (e.key === "Enter") {
 			// [NRS-1301]
 			const url = normalizeUrl(omnibox.value); // const tab = tabs.find(t => t.id === activeTabId); // [NRS-1301]
-			if (tab) tab.webview.src = url; // [NRS-1301]
+			if (tab) tab.webview.addEventListener("did-fail-load", (ev) => {
+	globalThis.electronAPI?.invoke?.("sb:log", "did-fail-load", ev.errorCode, ev.errorDescription, ev.validatedURL);
+});
+webview.addEventListener("did-finish-load", () => {
+	globalThis.electronAPI?.invoke?.("sb:log", "did-finish-load", webview.src);
+});
+globalThis.electronAPI?.invoke?.("sb:log", "creating tab with url =", url, "| DEFAULT_HOME =", DEFAULT_HOME);
+webview.src = url; // [NRS-1301]
 			hideSuggestions(); // [NRS-1301]
 		} else if (e.key === "ArrowDown") {
 			// [NRS-1301]
@@ -4945,7 +4985,10 @@ omnibox.addEventListener("input", (e) => {
 		// [NRS-1301]
 		toggleSiteNotifications.addEventListener("change", () => {
 			// [NRS-1301]
-			const tab = tabs.find((t) => t.id === activeTabId); // const currentUrl = tab?.webview.getURL?.() || tab?.webview.src || ''; // const origin = getOrigin(currentUrl); // const setting = loadSiteSetting(origin); // [NRS-1301]
+			const tab = tabs.find((t) => t.id === activeTabId); // [NRS-1301]
+			const currentUrl = tab?.webview.getURL?.() || tab?.webview.src || ""; // [RESTORED]
+			const origin = getOrigin(currentUrl); // [RESTORED]
+			const setting = loadSiteSetting(origin); // [RESTORED]
 			setting.notificationsAllowed = toggleSiteNotifications.checked; // [NRS-1301]
 			saveSiteSetting(origin, setting); // [NRS-1301]
 			applySitePermissions(tab, origin); // [NRS-1301]

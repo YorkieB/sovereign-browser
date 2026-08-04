@@ -3,13 +3,12 @@ const { contextBridge, ipcRenderer } = require("electron"); // [NRS-1501] Electr
 contextBridge.exposeInMainWorld("electronAPI", {
 	// [SovereignBrowser] Absolute file:// URL of the user's own home page.
 	// Computed here so the renderer can read it synchronously at load time.
+	// [SovereignBrowser] Absolute file:// URL of the user's own home page.
+	// Resolved by the main process: this preload is sandboxed, so node:path
+	// and process.env are unavailable here. sendSync works under sandbox.
 	homeUrl: (() => {
 		try {
-			const nodePath = require("node:path");
-			const { pathToFileURL } = require("node:url");
-			const base = process.env.LOCALAPPDATA;
-			if (!base) { return null; }
-			return pathToFileURL(nodePath.join(base, "SovereignBrowser", "home", "index.html")).href;
+			return ipcRenderer.sendSync("sb:get-home-url");
 		} catch (err) {
 			console.error("[SovereignBrowser] Could not resolve home URL:", err);
 			return null;
