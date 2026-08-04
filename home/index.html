@@ -1,66 +1,193 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>Home</title>
+<title>Privacy Search</title>
 <style>
-:root{--bg:#f6f5f2;--fg:#1c1c1a;--mut:#6b6a65;--card:#fff;--line:#e2e0da;--accent:#3b6d84}
-@media(prefers-color-scheme:dark){:root{--bg:#16161a;--fg:#e8e7e3;--mut:#96958f;--card:#1f1f24;--line:#2e2e34;--accent:#7fb3c8}}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:var(--bg);color:var(--fg);
-font-family:"Segoe UI",system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:6vh 5vw}
-.wrap{width:100%;max-width:760px}
-h1{font-size:15px;font-weight:500;color:var(--mut);margin:0 0 18px;letter-spacing:.06em;text-transform:uppercase}
-form{display:flex;gap:8px;margin:0 0 34px}
-input{flex:1;padding:14px 16px;font-size:16px;color:var(--fg);background:var(--card);
-border:1px solid var(--line);border-radius:10px;outline:none}
-input:focus{border-color:var(--accent)}
-button{padding:14px 22px;font-size:15px;color:var(--fg);background:var(--card);
-border:1px solid var(--line);border-radius:10px;cursor:pointer}
-button:hover{border-color:var(--accent)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-a.tile{display:block;padding:14px 16px;background:var(--card);border:1px solid var(--line);
-border-radius:10px;text-decoration:none;color:var(--fg);font-size:15px}
-a.tile:hover{border-color:var(--accent)}
-a.tile span{display:block;font-size:12px;color:var(--mut);margin-top:3px}
-footer{margin-top:34px;font-size:12px;color:var(--mut)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;-webkit-font-smoothing:antialiased;
+background:#1a1a1a;color:#fff;line-height:1.6;overflow-x:hidden}
+.hero-section{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;
+text-align:center;padding:0 20px;position:relative;
+background:radial-gradient(ellipse at 30% 20%,#24506b 0%,transparent 55%),
+radial-gradient(ellipse at 75% 70%,#1f3a52 0%,transparent 55%),
+linear-gradient(160deg,#101820 0%,#1a1a1a 60%,#14202b 100%)}
+.hero-content{max-width:600px;margin-bottom:40px}
+.hero-title{font-size:3.5rem;font-weight:300;margin-bottom:1rem;text-shadow:2px 2px 4px rgba(0,0,0,.8)}
+.hero-subtitle{font-size:1.2rem;opacity:.9;text-shadow:1px 1px 2px rgba(0,0,0,.8)}
+.search-box{width:100%;max-width:600px;position:relative}
+.main-search-input{width:100%;padding:18px 60px 18px 20px;font-size:18px;border:none;border-radius:30px;
+background:rgba(255,255,255,.95);color:#333;box-shadow:0 8px 25px rgba(0,0,0,.3);transition:all .3s ease}
+.main-search-input:focus{outline:none;box-shadow:0 8px 35px rgba(0,0,0,.4);background:#fff}
+.search-button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#0078d4;border:none;
+width:44px;height:44px;border-radius:50%;color:#fff;cursor:pointer;font-size:17px;display:flex;
+align-items:center;justify-content:center;transition:background .3s ease}
+.search-button:hover{background:#106ebe}
+.hint{margin-top:18px;font-size:13px;opacity:.55}
+.news-carousel{padding:40px 0;background:#1a1a1a}
+.carousel-container,.discover-container{max-width:1400px;margin:0 auto;padding:0 20px}
+.carousel-title,.discover-title{font-size:1.8rem;margin-bottom:20px}
+.discover-title{font-size:2rem;margin-bottom:30px;text-transform:uppercase;font-weight:700}
+.news-cards-container{display:flex;gap:20px;overflow-x:auto;scroll-behavior:smooth;padding-bottom:10px}
+.news-card{flex:0 0 300px;height:200px;border-radius:12px;position:relative;cursor:pointer;
+transition:transform .3s ease;background:linear-gradient(135deg,#22384a,#2e5069)}
+.news-card:hover{transform:translateY(-5px)}
+.news-card-overlay{position:absolute;bottom:0;left:0;right:0;padding:20px;border-radius:0 0 12px 12px;
+background:linear-gradient(transparent,rgba(0,0,0,.85))}
+.news-card-title{font-size:16px;font-weight:600;line-height:1.3;margin-bottom:5px}
+.news-card-source{color:#ccc;font-size:12px}
+.status{font-size:13px;opacity:.55;padding:8px 0}
+.discover-section{padding:60px 0 80px;background:#1a1a1a}
+.discover-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:20px}
+.discover-card{border-radius:12px;overflow:hidden;cursor:pointer;position:relative;
+transition:transform .3s ease}
+.discover-card:hover{transform:scale(1.02)}
+.discover-card.large{grid-row:span 2;height:400px}
+.discover-card.medium{height:190px}
+.discover-card-content{position:absolute;bottom:0;left:0;right:0;padding:20px;
+background:linear-gradient(transparent,rgba(0,0,0,.8))}
+.discover-card-title{font-size:18px;font-weight:600;margin-bottom:8px;line-height:1.3}
+.discover-card-subtitle{font-size:14px;opacity:.8}
+.g1{background:linear-gradient(140deg,#1f4d5f,#3a7d8c)}
+.g2{background:linear-gradient(140deg,#31405e,#4e6591)}
+.g3{background:linear-gradient(140deg,#5a3550,#8a5077)}
+.g4{background:linear-gradient(140deg,#2c5545,#468a6a)}
+.g5{background:linear-gradient(140deg,#5d4a2b,#94764a)}
+@media(max-width:1200px){.discover-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.hero-title{font-size:2.5rem}.discover-grid{grid-template-columns:1fr}
+.discover-card.large{grid-row:auto;height:220px}.news-card{flex:0 0 250px}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Sovereign Browser</h1>
 
-  <form id="s" autocomplete="off">
-    <input id="q" type="text" placeholder="Search" aria-label="Search" autofocus>
-    <button type="submit">Go</button>
-  </form>
-
-  <div class="grid">
-    <a class="tile" href="https://github.com/YorkieB?tab=repositories">GitHub<span>repositories</span></a>
-    <a class="tile" href="https://github.com/YorkieB/sovereign-browser">This project<span>sovereign-browser</span></a>
-    <a class="tile" href="https://duckduckgo.com">DuckDuckGo<span>search</span></a>
-    <a class="tile" href="https://en.wikipedia.org">Wikipedia<span>reference</span></a>
-    <a class="tile" href="https://www.bbc.co.uk/weather">Weather<span>BBC</span></a>
-    <a class="tile" href="https://news.ycombinator.com">Hacker News<span>tech</span></a>
+<section class="hero-section">
+  <div class="hero-content">
+    <h1 class="hero-title">Privacy Search</h1>
+    <p class="hero-subtitle">Fast, unbiased search results with no tracking and positive news</p>
   </div>
+  <form class="search-box" id="searchForm" autocomplete="off">
+    <input type="text" class="main-search-input" id="q"
+           placeholder="Search the web privately..." aria-label="Search" autofocus>
+    <button type="submit" class="search-button" aria-label="Search">&#8250;</button>
+  </form>
+  <p class="hint">Local file. Type a URL to go straight there.</p>
+</section>
 
-  <footer>Local file. No network request on load. Edit this file to change tiles or search engine.</footer>
-</div>
+<section class="news-carousel" id="newsSection" hidden>
+  <div class="carousel-container">
+    <h2 class="carousel-title">Trending positive news</h2>
+    <div class="news-cards-container" id="newsCards"></div>
+    <div class="status" id="newsStatus"></div>
+  </div>
+</section>
+
+<section class="discover-section">
+  <div class="discover-container">
+    <h2 class="discover-title">Discover</h2>
+    <div class="discover-grid" id="discoverGrid"></div>
+  </div>
+</section>
 
 <script>
-var SEARCH = "https://duckduckgo.com/?q=";
-document.getElementById("s").addEventListener("submit", function (e) {
-  e.preventDefault();
-  var v = document.getElementById("q").value.trim();
+var SEARCH_URL = "https://search.brave.com/search?q=";
+var API_BASE = "http://localhost:3001";
+var NEWS_TIMEOUT_MS = 2500;
+
+function go(url) { window.location.href = url; }
+
+function runSearch(value) {
+  var v = (value || "").trim();
   if (!v) { return; }
-  if (/^https?:\/\//i.test(v) || /^[\w-]+(\.[\w-]+)+(\/|$)/.test(v)) {
-    location.href = /^https?:\/\//i.test(v) ? v : "https://" + v;
+  var looksLikeUrl = /^https?:\/\//i.test(v) || /^[\w-]+(\.[\w-]+)+([\/?#]|$)/.test(v);
+  if (looksLikeUrl) {
+    go(/^https?:\/\//i.test(v) ? v : "https://" + v);
   } else {
-    location.href = SEARCH + encodeURIComponent(v);
+    go(SEARCH_URL + encodeURIComponent(v));
   }
+}
+
+document.getElementById("searchForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+  runSearch(document.getElementById("q").value);
 });
+
+var DISCOVER = [
+  { title: "Privacy Matters", subtitle: "Latest developments in digital privacy", size: "large",  tone: "g1" },
+  { title: "Technology News", subtitle: "Breaking tech stories",                  size: "medium", tone: "g2" },
+  { title: "Security Updates", subtitle: "Stay protected online",                 size: "medium", tone: "g3" },
+  { title: "Science",          subtitle: "Latest discoveries",                    size: "medium", tone: "g4" },
+  { title: "Environment",      subtitle: "Green initiatives",                     size: "medium", tone: "g5" }
+];
+
+(function buildDiscover() {
+  var grid = document.getElementById("discoverGrid");
+  DISCOVER.forEach(function (card) {
+    var el = document.createElement("div");
+    el.className = "discover-card " + card.size + " " + card.tone;
+    var content = document.createElement("div");
+    content.className = "discover-card-content";
+    var h3 = document.createElement("h3");
+    h3.className = "discover-card-title";
+    h3.textContent = card.title;
+    var p = document.createElement("p");
+    p.className = "discover-card-subtitle";
+    p.textContent = card.subtitle;
+    content.appendChild(h3);
+    content.appendChild(p);
+    el.appendChild(content);
+    el.addEventListener("click", function () { runSearch(card.title); });
+    grid.appendChild(el);
+  });
+})();
+
+function renderNews(articles) {
+  var wrap = document.getElementById("newsCards");
+  wrap.textContent = "";
+  articles.forEach(function (a) {
+    var card = document.createElement("div");
+    card.className = "news-card";
+    var overlay = document.createElement("div");
+    overlay.className = "news-card-overlay";
+    var h3 = document.createElement("h3");
+    h3.className = "news-card-title";
+    h3.textContent = a.title || "Untitled";
+    var src = document.createElement("p");
+    src.className = "news-card-source";
+    src.textContent = a.source || "";
+    overlay.appendChild(h3);
+    overlay.appendChild(src);
+    card.appendChild(overlay);
+    if (a.url) { card.addEventListener("click", function () { go(a.url); }); }
+    wrap.appendChild(card);
+  });
+}
+
+(function loadNews() {
+  var section = document.getElementById("newsSection");
+  var status = document.getElementById("newsStatus");
+  var controller = new AbortController();
+  var timer = setTimeout(function () { controller.abort(); }, NEWS_TIMEOUT_MS);
+
+  fetch(API_BASE + "/api/news?q=positive+news&count=6", { signal: controller.signal })
+    .then(function (r) {
+      if (!r.ok) { throw new Error("Search service returned " + r.status); }
+      return r.json();
+    })
+    .then(function (data) {
+      var results = (data && data.results) || [];
+      if (!results.length) { throw new Error("No articles returned"); }
+      section.hidden = false;
+      renderNews(results);
+      status.textContent = "";
+    })
+    .catch(function (err) {
+      console.warn("[home] news unavailable:", err && err.message);
+      section.hidden = true;
+    })
+    .finally(function () { clearTimeout(timer); });
+})();
 </script>
 </body>
 </html>

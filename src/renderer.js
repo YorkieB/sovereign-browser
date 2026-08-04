@@ -48,6 +48,7 @@ const OPENAI_API_KEY = "lm-studio"; // LM Studio ignores the value, header must 
 	const btnBack = document.getElementById("btn-back"); // [NRS-1303] Back navigation button
 	const btnForward = document.getElementById("btn-forward"); // [NRS-1303] Forward navigation button
 	const btnReload = document.getElementById("btn-reload"); // [NRS-1303] Reload page button
+const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home button
 	const btnNewWindow = document.getElementById("btn-new-window"); // [NRS-1303] New window button
 	const btnNewIncognito = document.getElementById("btn-new-incognito"); // [NRS-1303] Incognito mode button
 	const btnNewTab = document.getElementById("btn-new-tab"); // [NRS-1303] New tab button
@@ -1660,6 +1661,17 @@ const OPENAI_API_KEY = "lm-studio"; // LM Studio ignores the value, header must 
 			showSuccess("Reloading page"); // [NRS-1301]
 		} // [NRS-1301]
 	}); // [NRS-1301]
+
+btnHome.addEventListener("click", () => {
+	// [SovereignBrowser] Third entry point: Home button -> own home page
+	const tab = tabs.find((t) => t.id === activeTabId);
+	if (tab) {
+		tab.webview.src = DEFAULT_HOME;
+		showSuccess("Home");
+	} else {
+		createTab(DEFAULT_HOME);
+	}
+});
 
 	btnNewTab.addEventListener("click", () => {
 		// [NRS-1301]
