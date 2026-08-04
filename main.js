@@ -570,14 +570,113 @@ ipcMain.handle('mic:open-settings', async () => {
   } // [NRS-1001]
 }); // [NRS-1001]
 
+// [SovereignBrowser] Chrome extension support.
+// electron-chrome-extensions supplies the tab/popup/browser-action APIs that
+// Electron lacks; electron-chrome-web-store adds Web Store installation and
+// remembers what is installed, which Electron does not do on its own.
+async function setupChromeExtensions() {
+  const browserSession = browsingSession();
 
+  chromeExtensions = new ElectronChromeExtensions({
+    // Dual licensed: GPL-3.0 or a paid Patron licence. HOLLY is GPL-3.0.
+    license: 'GPL-3.0',
+    session: browserSession,
+    createTab(details) {
+      tellRenderer('ext:create-tab', { url: details.url || 'about:blank' });
+      const win = mainWindow();
+      return [win ? win.webContents : null, win];
+    },
+    selectTab(tab) {
+      tellRenderer('ext:select-tab', { webContentsId: tab.id });
+    },
+    removeTab(tab) {
+      tellRenderer('ext:remove-tab', { webContentsId: tab.id });
+    },
+    createWindow(details) {
+      tellRenderer('ext:create-tab', { url: (details.url && details.url[0]) || 'about:blank' });
+      return mainWindow();
+    },
+  });
 
+  await installChromeWebStore({
+    session: browserSession,
+    modulePath: path.join(__dirname, 'node_modules', 'electron-chrome-web-store'),
+  });
 
+  // The store restores everything it knows about, so unload whatever the user
+  // has disabled. Electron has no installed-but-disabled state of its own.
+  try {
+    const disabled = extensionsState().disabled || [];
+    for (const id of disabled) {
+      try { sessionExtensions().removeExtension(id); } catch {}
+    }
+  } catch (err) {
+    console.warn('[Holly] Could not apply disabled extensions:', err.message);
+  }
 
+  // Manifest V3 extensions run their background logic in a service worker.
+  // Electron loads the extension but never starts that worker, so the
+  // extension appears installed and does nothing. Start it explicitly, with a
+  // timeout so a stuck worker can never stall startup.
+  const all = sessionExtensions().getAllExtensions();
+  for (const ext of all) {
+    const mv3 = ext.manifest && ext.manifest.manifest_version === 3;
+    const hasWorker = ext.manifest && ext.manifest.background && ext.manifest.background.service_worker;
+    if (!mv3 || !hasWorker) { continue; }
+    try {
+      await Promise.race([
+        browserSession.serviceWorkers.startWorkerForScope('chrome-extension://' + ext.id),
+        new Promise((resolve, reject) =>
+          setTimeout(() => reject(new Error('timed out after 10s')), 10000)
+        ),
+      ]);
+      console.log('[Holly] Started service worker for', ext.name);
+    } catch (err) {
+      console.warn('[Holly] Could not start service worker for', ext.name, '-', err.message);
+    }
+  }
 
+  console.log('[Holly] Chrome extension support ready. Loaded:', all.length);
+  all.forEach((e) => console.log('   -', e.name, e.version, e.id));
+}
+// [SovereignBrowser] Startup. This block was accidentally deleted by an earlier
+// edit and the file still passed `node --check`, because a main process with no
+// startup code is perfectly valid JavaScript - it just never opens a window.
+//
+// The window is now created BEFORE extension setup and does not await it.
+// Extension initialisation touches the network and service workers; if any of
+// that hangs, the browser must still open. Previously an unresolved
+// startWorkerForScope left a main process running with no window at all.
+(async () => {
+  try {
+    await app.whenReady();
+    await loadExtensions();
+    setupJarvisAgentHandlers();
 
+    createWindow();
+    const mainWin = BrowserWindow.getAllWindows()[0];
+    if (!mainWin) {
+      throw new Error('createWindow() ran but no BrowserWindow was registered.');
+    }
+    new BrowserAutomationManager(mainWin);
 
+    setupChromeExtensions().catch((err) => {
+      console.error('[Holly] Chrome extension support failed to initialise:', err);
+    });
+  } catch (err) {
+    console.error('[Holly] Startup failed:', err);
+    try {
+      dialog.showErrorBox('HOLLY failed to start', String(err && err.stack ? err.stack : err));
+    } catch (dialogErr) {
+      console.error('[Holly] Could not display error dialog:', dialogErr);
+    }
+    app.quit();
+  }
+})();
 
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
 
 
 
