@@ -1,6 +1,20 @@
-﻿const { contextBridge, ipcRenderer } = require("electron"); // [NRS-1501] Electron context bridge and IPC
+const { contextBridge, ipcRenderer } = require("electron"); // [NRS-1501] Electron context bridge and IPC
 
 contextBridge.exposeInMainWorld("electronAPI", {
+	// [SovereignBrowser] Absolute file:// URL of the user's own home page.
+	// Computed here so the renderer can read it synchronously at load time.
+	homeUrl: (() => {
+		try {
+			const nodePath = require("node:path");
+			const { pathToFileURL } = require("node:url");
+			const base = process.env.LOCALAPPDATA;
+			if (!base) { return null; }
+			return pathToFileURL(nodePath.join(base, "SovereignBrowser", "home", "index.html")).href;
+		} catch (err) {
+			console.error("[SovereignBrowser] Could not resolve home URL:", err);
+			return null;
+		}
+	})(),
 	// [NRS-1001]
 	bookmarks: {
 		// [NRS-1001]

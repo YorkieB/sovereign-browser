@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Home</title>
+<style>
+:root{--bg:#f6f5f2;--fg:#1c1c1a;--mut:#6b6a65;--card:#fff;--line:#e2e0da;--accent:#3b6d84}
+@media(prefers-color-scheme:dark){:root{--bg:#16161a;--fg:#e8e7e3;--mut:#96958f;--card:#1f1f24;--line:#2e2e34;--accent:#7fb3c8}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--fg);
+font-family:"Segoe UI",system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:6vh 5vw}
+.wrap{width:100%;max-width:760px}
+h1{font-size:15px;font-weight:500;color:var(--mut);margin:0 0 18px;letter-spacing:.06em;text-transform:uppercase}
+form{display:flex;gap:8px;margin:0 0 34px}
+input{flex:1;padding:14px 16px;font-size:16px;color:var(--fg);background:var(--card);
+border:1px solid var(--line);border-radius:10px;outline:none}
+input:focus{border-color:var(--accent)}
+button{padding:14px 22px;font-size:15px;color:var(--fg);background:var(--card);
+border:1px solid var(--line);border-radius:10px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+a.tile{display:block;padding:14px 16px;background:var(--card);border:1px solid var(--line);
+border-radius:10px;text-decoration:none;color:var(--fg);font-size:15px}
+a.tile:hover{border-color:var(--accent)}
+a.tile span{display:block;font-size:12px;color:var(--mut);margin-top:3px}
+footer{margin-top:34px;font-size:12px;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Sovereign Browser</h1>
+
+  <form id="s" autocomplete="off">
+    <input id="q" type="text" placeholder="Search" aria-label="Search" autofocus>
+    <button type="submit">Go</button>
+  </form>
+
+  <div class="grid">
+    <a class="tile" href="https://github.com/YorkieB?tab=repositories">GitHub<span>repositories</span></a>
+    <a class="tile" href="https://github.com/YorkieB/sovereign-browser">This project<span>sovereign-browser</span></a>
+    <a class="tile" href="https://duckduckgo.com">DuckDuckGo<span>search</span></a>
+    <a class="tile" href="https://en.wikipedia.org">Wikipedia<span>reference</span></a>
+    <a class="tile" href="https://www.bbc.co.uk/weather">Weather<span>BBC</span></a>
+    <a class="tile" href="https://news.ycombinator.com">Hacker News<span>tech</span></a>
+  </div>
+
+  <footer>Local file. No network request on load. Edit this file to change tiles or search engine.</footer>
+</div>
+
+<script>
+var SEARCH = "https://duckduckgo.com/?q=";
+document.getElementById("s").addEventListener("submit", function (e) {
+  e.preventDefault();
+  var v = document.getElementById("q").value.trim();
+  if (!v) { return; }
+  if (/^https?:\/\//i.test(v) || /^[\w-]+(\.[\w-]+)+(\/|$)/.test(v)) {
+    location.href = /^https?:\/\//i.test(v) ? v : "https://" + v;
+  } else {
+    location.href = SEARCH + encodeURIComponent(v);
+  }
+});
+</script>
+</body>
+</html>

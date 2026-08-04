@@ -173,7 +173,7 @@ const OPENAI_API_KEY = "lm-studio"; // LM Studio ignores the value, header must 
 	}); // [NRS-1301]
 
 	// Global configuration and state variables // [NRS-1301]
-	const DEFAULT_HOME = "https://www.bing.com"; // [NRS-1301]
+	const DEFAULT_HOME = (globalThis.electronAPI && globalThis.electronAPI.homeUrl) || "https://duckduckgo.com"; // [SovereignBrowser] own home page, DuckDuckGo fallback
 	let tabs = []; // [NRS-1301]
 	let activeTabId = null; // [NRS-1301]
 	let splitPartnerId = null; // [NRS-1301]

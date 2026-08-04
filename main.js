@@ -137,18 +137,49 @@ async function loadExtensions() {
 } // [NRS-1001]
 
 // Use a temp cache directory to avoid OS permission issues // [NRS-1001]
-const cacheDir = path.join(app.getPath('temp'), 'LightBrowserCache'); // [NRS-1001]
+// === Sovereign Browser: profile + home page location ======================
+// Profile lives under %LOCALAPPDATA%\SovereignBrowser so bookmarks, history
+// and cache survive restarts. Previously this pointed at the temp directory,
+// which wiped the profile on every launch.
+const PROFILE_DIR = path.join(
+  process.env.LOCALAPPDATA || app.getPath('appData'),
+  'SovereignBrowser'
+);
+const HOME_DIR = path.join(PROFILE_DIR, 'home');
+const HOME_FILE = path.join(HOME_DIR, 'index.html');
+const cacheDir = path.join(PROFILE_DIR, 'Cache');
+
 try {
+  fs.mkdirSync(PROFILE_DIR, { recursive: true });
+  fs.mkdirSync(HOME_DIR, { recursive: true });
   fs.mkdirSync(cacheDir, { recursive: true });
-} catch {} // [NRS-1001]
-app.commandLine.appendSwitch('disk-cache-dir', cacheDir); // [NRS-1001]
-app.commandLine.appendSwitch('disable-gpu-shader-disk-cache'); // [NRS-1001]
-app.commandLine.appendSwitch('disable-application-cache'); // [NRS-1001]
-app.commandLine.appendSwitch('disable-gpu'); // [NRS-1001]
-// Use temp userData to avoid profile locking issues // [NRS-1001]
+  app.setPath('userData', PROFILE_DIR);
+} catch (err) {
+  console.error('[SovereignBrowser] Could not create profile directory:', err);
+  throw new Error('Profile directory unusable at ' + PROFILE_DIR + ': ' + err.message);
+}
+
+// Seed the home page from the bundled template on FIRST RUN ONLY, so the
+// user's own edits to the live home page are never overwritten.
 try {
-  app.setPath('userData', path.join(app.getPath('temp'), 'LightBrowserUserData'));
-} catch {} // [NRS-1001]
+  if (!fs.existsSync(HOME_FILE)) {
+    const seed = path.join(__dirname, 'home', 'index.html');
+    if (fs.existsSync(seed)) {
+      fs.copyFileSync(seed, HOME_FILE);
+      console.log('[SovereignBrowser] Seeded home page at ' + HOME_FILE);
+    } else {
+      console.warn('[SovereignBrowser] No home template found at ' + seed);
+    }
+  }
+} catch (err) {
+  console.error('[SovereignBrowser] Could not seed home page:', err);
+}
+
+app.commandLine.appendSwitch('disk-cache-dir', cacheDir);
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+app.commandLine.appendSwitch('disable-application-cache');
+app.commandLine.appendSwitch('disable-gpu');
+// =========================================================================
 
 // App initialization - wrapped in async IIFE (CommonJS has no top-level await) // [NRS-1001]
 (async () => {
