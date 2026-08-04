@@ -4546,14 +4546,23 @@ btnHome.addEventListener("click", () => {
 		e.stopPropagation(); // [NRS-1301]
 
 		if (e.key === "Enter") {
-			// [NRS-1301]
-			const url = normalizeUrl(omnibox.value); // [NRS-1301]
-			const tab = tabs.find(t => t.id === activeTabId); // [RESTORED]
-			if (tab) tab.webview.addEventListener("did-fail-load", (ev) => {
-	globalThis.electronAPI?.invoke?.("sb:log", "did-fail-load", ev.errorCode, ev.errorDescription, ev.validatedURL);
-});
-webview.src = url; // [NRS-1301]
-			hideSuggestions(); // [NRS-1301]
+			// [SovereignBrowser] This handler was broken by an earlier diagnostic
+			// edit: a string replace on `webview.src = url` matched here as well as
+			// in createTab, leaving `if (tab)` guarding only a listener and a bare
+			// `webview.src` referring to a variable not in scope. The ReferenceError
+			// was swallowed by the file's own error handler, so pressing Enter in
+			// the address bar silently did nothing.
+			e.preventDefault();
+			clearTimeout(suggestDebounceTimer);
+			const url = normalizeUrl(omnibox.value);
+			if (!url) { return; }
+			const tab = tabs.find((t) => t.id === activeTabId);
+			if (tab && tab.webview) {
+				tab.webview.src = url;
+			} else {
+				createTab(url);
+			}
+			hideSuggestions();
 		} else if (e.key === "ArrowDown") {
 			// [NRS-1301]
 			e.preventDefault(); // [NRS-1301]
