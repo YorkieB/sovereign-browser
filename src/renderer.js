@@ -1615,6 +1615,17 @@ async function fetchBraveSuggestions(query) {
 				.catch(() => {}); // Inject error guard script with safe catch // [NRS-1301]
 		}); // [NRS-1301]
 		const tab = { id, tabEl, titleEl, webview, group: null, incognito: !!options.incognito, pinned: false, muted: false }; // [RESTORED]
+		// [SovereignBrowser] Attach the backing abstraction alongside the raw
+		// element. tab.webview is untouched, so no existing call site changes
+		// and behaviour is identical. Call sites migrate to tab.backing
+		// incrementally; once none reference tab.webview, the WebContentsView
+		// backing can be swapped in from one place.
+		try {
+			tab.backing = globalThis.HollyTabBacking.createWebviewBacking(webview);
+		} catch (err) {
+			console.error("[tab] could not create backing:", err && err.message);
+			tab.backing = null;
+		}
 		tabs.push(tab); // [NRS-1301]
 
 		if (options.group) applyGroup(tab, options.group); // [NRS-1301]
