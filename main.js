@@ -180,12 +180,8 @@ try {
 // Node is available, and hand it over synchronously on request.
 const { pathToFileURL } = require('node:url');
 const HOME_URL = pathToFileURL(HOME_FILE).href;
-console.log('[SB-DIAG] HOME_FILE   =', HOME_FILE);
-console.log('[SB-DIAG] HOME_URL    =', HOME_URL);
-console.log('[SB-DIAG] file exists =', fs.existsSync(HOME_FILE));
 ipcMain.handle('sb:log', (event, ...args) => { console.log('[SB-RENDERER]', ...args); });
 ipcMain.on('sb:get-home-url', (event) => {
-  console.log('[SB-DIAG] renderer asked for home url -> serving', HOME_URL);
   event.returnValue = HOME_URL;
 });
 app.commandLine.appendSwitch('disk-cache-dir', cacheDir);

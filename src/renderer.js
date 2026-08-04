@@ -4,7 +4,6 @@ globalThis.addEventListener("error", (ev) => {
 globalThis.addEventListener("unhandledrejection", (ev) => {
 	globalThis.electronAPI?.invoke?.("sb:log", "UNHANDLED-REJECTION", String(ev.reason));
 });
-globalThis.electronAPI?.invoke?.("sb:log", "SB-BOOT renderer start");
 // === Sovereign Browser: local LLM configuration =============================
 // Chat runs against LM Studio on this machine. No cloud calls, no API key
 // leaves this PC. Change LLM_MODEL to any model id LM Studio is serving.
@@ -1634,10 +1633,6 @@ async function fetchBraveSuggestions(query) {
 			webview.addEventListener("did-fail-load", (ev) => {
 	globalThis.electronAPI?.invoke?.("sb:log", "did-fail-load", ev.errorCode, ev.errorDescription, ev.validatedURL);
 });
-webview.addEventListener("did-finish-load", () => {
-	globalThis.electronAPI?.invoke?.("sb:log", "did-finish-load", webview.src);
-});
-globalThis.electronAPI?.invoke?.("sb:log", "creating tab with url =", url, "| DEFAULT_HOME =", DEFAULT_HOME);
 webview.src = url; // [NRS-1301]
 		}, 10); // [NRS-1301]
 
@@ -4440,10 +4435,6 @@ btnHome.addEventListener("click", () => {
 			if (tab) tab.webview.addEventListener("did-fail-load", (ev) => {
 	globalThis.electronAPI?.invoke?.("sb:log", "did-fail-load", ev.errorCode, ev.errorDescription, ev.validatedURL);
 });
-webview.addEventListener("did-finish-load", () => {
-	globalThis.electronAPI?.invoke?.("sb:log", "did-finish-load", webview.src);
-});
-globalThis.electronAPI?.invoke?.("sb:log", "creating tab with url =", url, "| DEFAULT_HOME =", DEFAULT_HOME);
 webview.src = url; // [NRS-1301]
 			hideSuggestions(); // [NRS-1301]
 		} else if (e.key === "ArrowDown") {
