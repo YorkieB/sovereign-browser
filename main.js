@@ -100,7 +100,7 @@ function createWindow() {
   // Downloads handling // [NRS-1001]
   try {
     // [NRS-1001]
-    session.defaultSession.on('will-download', (event, item) => {
+    browsingSession().on('will-download', (event, item) => {
       // [NRS-1001]
       const fileName = item.getFilename(); // [NRS-1101] Get download filename
       const savePath = path.join(app.getPath('downloads'), fileName); // [NRS-1101] Build download path
@@ -111,6 +111,14 @@ function createWindow() {
     console.warn('Failed to set up download handler:', e.message); // [NRS-1001]
   } // [NRS-1001]
 } // [NRS-1001]
+
+// [SovereignBrowser] The session every normal tab uses. Must match the
+// partition set on the <webview> elements in renderer.js, or downloads and
+// extensions attach to a session no tab is actually using.
+const BROWSING_PARTITION = 'persist:holly';
+function browsingSession() {
+  return session.fromPartition(BROWSING_PARTITION);
+}
 
 async function loadExtensions() {
   // [NRS-1001]
@@ -124,7 +132,7 @@ async function loadExtensions() {
       const extPath = path.join(extRoot, entry.name); // [NRS-1001]
       try {
         // [NRS-1001]
-        const loaded = await session.defaultSession.loadExtension(extPath, {
+        const loaded = await browsingSession().loadExtension(extPath, {
           allowFileAccess: true,
         }); // [NRS-1001]
         console.log('Loaded extension', loaded.name, 'from', extPath); // [NRS-1001]
@@ -350,6 +358,7 @@ ipcMain.handle('mic:open-settings', async () => {
     return { opened: false, error: err?.message || 'Unknown error' }; // [NRS-1001]
   } // [NRS-1001]
 }); // [NRS-1001]
+
 
 
 

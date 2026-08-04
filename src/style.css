@@ -2325,3 +2325,6 @@ textarea:focus {
 .addon-right { display: flex; align-items: center; gap: 2px; }
 .addon-right button, .addon-right img { width: 32px; height: 32px; border-radius: 999px; }
 .extensions-count { display: none; }
+
+/* [SovereignBrowser] context menu disabled items */
+.context-option.disabled { opacity: 0.4; pointer-events: none; }

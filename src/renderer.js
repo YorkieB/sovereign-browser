@@ -1147,48 +1147,88 @@ async function fetchBraveSuggestions(query) {
 	// Webview Context Menu // [NRS-1301]
 	let contextMenuWebviewId = null; // [NRS-1301]
 
+	let contextMenuParams = null; // [SovereignBrowser] params of the last right-click
+
 	function showWebviewContextMenu(tabId, event) {
-		// [NRS-1301]
-		event.preventDefault(); // [NRS-1301]
-		contextMenuWebviewId = tabId; // [NRS-1301]
-		webviewContextMenu.classList.add("show"); // [NRS-1301]
+		// [SovereignBrowser] The webview 'context-menu' event carries no
+		// clientX/clientY - Electron puts the coordinates in event.params, and
+		// they are relative to the webview, not the window. Reading clientX gave
+		// undefined, so style.left became "undefinedpx" and the menu fell back
+		// to the top-left corner.
+		if (event.preventDefault) { event.preventDefault(); }
+		const params = event.params || {};
+		contextMenuParams = params;
+		contextMenuWebviewId = tabId;
 
-		// Position at click location with boundary checking // [NRS-1301]
-		let x = event.clientX; // [NRS-1301]
-		let y = event.clientY; // [NRS-1301]
+		const tab = tabs.find((t) => t.id === tabId);
+		const flags = params.editFlags || {};
+		const hasSelection = !!(params.selectionText && params.selectionText.trim());
 
-		// Give menu a chance to render, then check bounds // [NRS-1301]
+		function toggle(selector, on) {
+			webviewContextMenu.querySelectorAll(selector).forEach((el) => {
+				el.style.display = on ? "" : "none";
+			});
+		}
+		toggle(".ctx-link", !!params.linkURL);
+		toggle(".ctx-image", params.mediaType === "image");
+		toggle(".ctx-edit", !!params.isEditable);
+		toggle(".ctx-copy", hasSelection || !!params.isEditable);
+		toggle(".ctx-selectall", !!params.isEditable || hasSelection);
+		toggle(".ctx-edit-sep", !!params.isEditable || hasSelection);
+		toggle(".ctx-search", hasSelection);
+
+		const cut = webviewContextMenu.querySelector('[data-action="cut"]');
+		const copy = webviewContextMenu.querySelector('[data-action="copy"]');
+		const paste = webviewContextMenu.querySelector('[data-action="paste"]');
+		if (cut) { cut.classList.toggle("disabled", flags.canCut === false); }
+		if (copy) { copy.classList.toggle("disabled", flags.canCopy === false); }
+		if (paste) { paste.classList.toggle("disabled", flags.canPaste === false); }
+
+		webviewContextMenu.classList.add("show");
+
+		// params.x/y are relative to the webview, so offset by its position.
+		const wvRect = tab && tab.webview ? tab.webview.getBoundingClientRect() : { left: 0, top: 0 };
+		let x = (params.x || 0) + wvRect.left;
+		let y = (params.y || 0) + wvRect.top;
+
 		setTimeout(() => {
-			// [NRS-1301]
-			const rect = webviewContextMenu.getBoundingClientRect(); // [NRS-1301]
-			const padding = 4; // [RESTORED]
-
-			// Check right boundary // [NRS-1301]
+			const rect = webviewContextMenu.getBoundingClientRect();
+			const padding = 4;
 			if (x + rect.width + padding > window.innerWidth) {
-				// [NRS-1301]
-				x = window.innerWidth - rect.width - padding; // [NRS-1301]
-			} // [NRS-1301]
-
-			// Check bottom boundary // [NRS-1301]
+				x = window.innerWidth - rect.width - padding;
+			}
 			if (y + rect.height + padding > window.innerHeight) {
-				// [NRS-1301]
-				y = window.innerHeight - rect.height - padding; // [NRS-1301]
-			} // [NRS-1301]
-
-			// Ensure not negative // [NRS-1301]
-			x = Math.max(padding, x); // [NRS-1301]
-			y = Math.max(padding, y); // [NRS-1301]
-
-			webviewContextMenu.style.left = x + "px"; // [NRS-1301]
-			webviewContextMenu.style.top = y + "px"; // [NRS-1301]
-		}, 0); // [NRS-1301]
-	} // [NRS-1301]
+				y = window.innerHeight - rect.height - padding;
+			}
+			x = Math.max(padding, x);
+			y = Math.max(padding, y);
+			webviewContextMenu.style.left = x + "px";
+			webviewContextMenu.style.top = y + "px";
+		}, 0);
+	}
 
 	function hideWebviewContextMenu() {
 		// [NRS-1301]
 		webviewContextMenu.classList.remove("show"); // [NRS-1301]
 		contextMenuWebviewId = null; // [NRS-1301]
 	} // [NRS-1301]
+
+	function withWebviewFocus(tab, fn) {
+		// [SovereignBrowser] Give focus back to the page, then run the command
+		// once focus has landed.
+		try {
+			tab.webview.focus();
+		} catch (err) {
+			console.warn("[context-menu] could not focus webview:", err.message);
+		}
+		setTimeout(() => {
+			try {
+				fn();
+			} catch (err) {
+				console.warn("[context-menu] edit command failed:", err.message);
+			}
+		}, 0);
+	}
 
 	function handleWebviewContextAction(action) {
 		// [NRS-1301]
@@ -1198,6 +1238,52 @@ async function fetchBraveSuggestions(query) {
 		switch (
 			action // [NRS-1301]
 		) {
+			// [SovereignBrowser] These act on whatever is focused INSIDE the
+			// webview. Clicking an item in HOLLY's own menu moves focus out of
+			// the page, so the command ran with nothing focused and silently did
+			// nothing. Ctrl+V worked because focus never left the page.
+			case "cut":
+				withWebviewFocus(tab, () => tab.webview.cut());
+				break;
+			case "copy":
+				withWebviewFocus(tab, () => tab.webview.copy());
+				break;
+			case "paste":
+				withWebviewFocus(tab, () => tab.webview.paste());
+				break;
+			case "select-all":
+				withWebviewFocus(tab, () => tab.webview.selectAll());
+				break;
+			case "copy-link": {
+				const url = contextMenuParams && contextMenuParams.linkURL;
+				if (url) {
+					navigator.clipboard.writeText(url).catch((err) => {
+						console.warn("[context-menu] clipboard write failed:", err.message);
+					});
+				}
+				break;
+			}
+			case "copy-image-link": {
+				const src = contextMenuParams && contextMenuParams.srcURL;
+				if (src) {
+					navigator.clipboard.writeText(src).catch((err) => {
+						console.warn("[context-menu] clipboard write failed:", err.message);
+					});
+				}
+				break;
+			}
+			case "open-link-new-tab": {
+				const url = contextMenuParams && contextMenuParams.linkURL;
+				if (url) { createTab(url); }
+				break;
+			}
+			case "search-selection": {
+				const text = contextMenuParams && contextMenuParams.selectionText;
+				if (text && text.trim()) {
+					createTab("https://search.brave.com/search?q=" + encodeURIComponent(text.trim()));
+				}
+				break;
+			}
 			case "go-back-page": // [NRS-1301]
 				if (tab.webview.canGoBack?.()) tab.webview.goBack(); // [NRS-1301]
 				break; // [NRS-1301]
@@ -1422,10 +1508,16 @@ async function fetchBraveSuggestions(query) {
 		const webview = document.createElement("webview"); // [RESTORED]
 		if (!options.incognito) {
 			// [NRS-1301]
-			webview.setAttribute("partition", `persist:tab-${id}`); // [NRS-1301]
+			// [SovereignBrowser] One shared persistent session for all normal
+			// tabs. Previously each tab had its own partition, so cookies and
+			// logins did not carry between tabs, and extensions (which load per
+			// session) could never apply to any tab.
+			webview.setAttribute("partition", "persist:holly");
 		} else {
 			// [NRS-1301]
-			webview.setAttribute("partition", `temp:incog-${id}`); // [NRS-1301]
+			// Incognito tabs share one in-memory session: isolated from normal
+			// browsing, but consistent with each other, as in Chrome and Edge.
+			webview.setAttribute("partition", "holly-incognito");
 		} // [NRS-1301]
 		webview.setAttribute("allowpopups", ""); // [NRS-1301]
 		webview.setAttribute("preload", "../preload.js"); // [NRS-1301]
