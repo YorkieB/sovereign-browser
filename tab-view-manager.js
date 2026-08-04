@@ -85,6 +85,7 @@ function createTabViewManager(win, opts) {
   }
 
   function registerWithExtensions(entry) {
+    if (entry.incognito) { return; } // Chrome semantics: extensions stay out of incognito
     const ext = getExtensions();
     if (!ext) {
       pendingExtensionTabs.push(entry);
@@ -381,7 +382,7 @@ function createTabViewManager(win, opts) {
       if (!ext) { return; }
       while (pendingExtensionTabs.length) {
         const entry = pendingExtensionTabs.shift();
-        if (tabsById.has(entry.id)) {
+        if (tabsById.has(entry.id) && !entry.incognito) {
           try { ext.addTab(entry.wc, win); } catch (err) {
             console.warn('[tabviews] deferred extensions.addTab failed:', err.message);
           }

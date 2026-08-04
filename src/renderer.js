@@ -1,3 +1,20 @@
+// [SovereignBrowser] showSuccess/showError were destroyed by the annotation
+// tool; every toast call since has thrown an uncaught ReferenceError. Defined
+// here at file scope, self-contained, so they resolve from any nesting depth.
+function showSuccess(text) {
+	try {
+		var el = document.getElementById("status-text");
+		if (el) { el.textContent = String(text); }
+	} catch (err) { console.log("[holly]", text); }
+}
+function showError(text) {
+	console.warn("[holly]", text);
+	try {
+		var el = document.getElementById("status-text");
+		if (el) { el.textContent = String(text); }
+	} catch (err) { /* logged above */ }
+}
+
 globalThis.addEventListener("error", (ev) => {
 	globalThis.electronAPI?.invoke?.("sb:log", "UNCAUGHT", ev.message, "@", ev.filename, "line", ev.lineno);
 });
@@ -179,6 +196,16 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 
 	// Global configuration and state variables // [NRS-1301]
 	const DEFAULT_HOME = (globalThis.electronAPI && globalThis.electronAPI.homeUrl) || "https://duckduckgo.com"; // [SovereignBrowser] own home page, DuckDuckGo fallback
+
+	// [SovereignBrowser] Which backing new tabs use. This branch defaults to
+	// WebContentsView ("wcv"); set localStorage 'holly.tabBacking' to
+	// "webview" to fall back to the legacy <webview> path.
+	const TAB_BACKING_MODE = (() => {
+		try { return localStorage.getItem("holly.tabBacking") || "wcv"; } catch (err) { return "wcv"; }
+	})();
+	const USE_WCV = TAB_BACKING_MODE === "wcv"
+		&& !!(globalThis.electronAPI && typeof globalThis.electronAPI.invoke === "function" && typeof globalThis.electronAPI.on === "function")
+		&& !!(globalThis.HollyTabBacking && typeof globalThis.HollyTabBacking.createWebContentsViewBacking === "function");
 	let tabs = []; // [NRS-1301]
 	let activeTabId = null; // [NRS-1301]
 	let splitPartnerId = null; // [NRS-1301]
@@ -1515,26 +1542,42 @@ async function fetchBraveSuggestions(query) {
 		tabEl.appendChild(titleEl); // [NRS-1301]
 		tabEl.appendChild(closeEl); // [NRS-1301]
 		tabsEl.appendChild(tabEl); // [NRS-1301]
-		const webview = document.createElement("webview"); // [RESTORED]
-		if (!options.incognito) {
-			// [NRS-1301]
-			// [SovereignBrowser] One shared persistent session for all normal
-			// tabs. Previously each tab had its own partition, so cookies and
-			// logins did not carry between tabs, and extensions (which load per
-			// session) could never apply to any tab.
-			webview.setAttribute("partition", "persist:holly");
+		let webview; // real <webview> in the legacy path, compat shim otherwise
+		let wcvBacking = null;
+		if (USE_WCV) {
+			// [SovereignBrowser] WebContentsView backing. The placeholder div
+			// takes the <webview>'s place in the DOM - same class, same CSS,
+			// same display toggling - and the layout pump mirrors its rect and
+			// visibility to the main-process view.
+			const placeholder = document.createElement("div");
+			placeholder.className = "webview";
+			placeholder.dataset.tabId = String(id);
+			contentEl.appendChild(placeholder);
+			wcvBacking = globalThis.HollyTabBacking.createWebContentsViewBacking({ id, incognito: !!options.incognito });
+			webview = wcvBacking.compatElement(placeholder);
+			ensureWcvLayoutPump();
 		} else {
-			// [NRS-1301]
-			// Incognito tabs share one in-memory session: isolated from normal
-			// browsing, but consistent with each other, as in Chrome and Edge.
-			webview.setAttribute("partition", "holly-incognito");
-		} // [NRS-1301]
-		webview.setAttribute("allowpopups", ""); // [NRS-1301]
-		webview.setAttribute("preload", "../preload.js"); // [NRS-1301]
-		webview.setAttribute("websecurity", "yes"); // [NRS-1301]
-		webview.setAttribute("nodeintegration", "no"); // [NRS-1301]
-		webview.className = "webview"; // [NRS-1301]
-		contentEl.appendChild(webview); // [NRS-1301]
+			webview = document.createElement("webview"); // [RESTORED]
+			if (!options.incognito) {
+				// [NRS-1301]
+				// [SovereignBrowser] One shared persistent session for all normal
+				// tabs. Previously each tab had its own partition, so cookies and
+				// logins did not carry between tabs, and extensions (which load per
+				// session) could never apply to any tab.
+				webview.setAttribute("partition", "persist:holly");
+			} else {
+				// [NRS-1301]
+				// Incognito tabs share one in-memory session: isolated from normal
+				// browsing, but consistent with each other, as in Chrome and Edge.
+				webview.setAttribute("partition", "holly-incognito");
+			} // [NRS-1301]
+			webview.setAttribute("allowpopups", ""); // [NRS-1301]
+			webview.setAttribute("preload", "../preload.js"); // [NRS-1301]
+			webview.setAttribute("websecurity", "yes"); // [NRS-1301]
+			webview.setAttribute("nodeintegration", "no"); // [NRS-1301]
+			webview.className = "webview"; // [NRS-1301]
+			contentEl.appendChild(webview); // [NRS-1301]
+		}
 
 		// Enhanced error handling for webview // [NRS-1301]
 		webview.addEventListener("console-message", (e) => {
@@ -1621,7 +1664,7 @@ async function fetchBraveSuggestions(query) {
 		// incrementally; once none reference tab.webview, the WebContentsView
 		// backing can be swapped in from one place.
 		try {
-			tab.backing = globalThis.HollyTabBacking.createWebviewBacking(webview);
+			tab.backing = wcvBacking || globalThis.HollyTabBacking.createWebviewBacking(webview);
 		} catch (err) {
 			console.error("[tab] could not create backing:", err && err.message);
 			tab.backing = null;
@@ -1801,6 +1844,76 @@ webview.src = url; // [NRS-1301]
 		contentEl.classList.toggle("split-view", splitViewEnabled && splitPartnerId !== null); // [NRS-1301]
 	} // [NRS-1301]
 
+	// [SovereignBrowser] WebContentsView layout pump. The placeholder divs are
+	// the single source of truth: whatever the existing CSS decides (active
+	// tab, split view, side panels), this mirrors to the main-process views.
+	// It also derives a top inset while any chrome dropdown hangs over the
+	// content area, and hides every view while a modal is open, because a
+	// WebContentsView always paints above this document.
+	let wcvPumpStarted = false;
+	function ensureWcvLayoutPump() {
+		if (wcvPumpStarted) { return; }
+		wcvPumpStarted = true;
+		const OVERLAY_SELECTORS = ["#omnibox-suggestions", ".menu-dropdown", "#overflow-menu", ".context-menu", "#find-bar", "#bookmarks-menu-list"];
+		const MODAL_SELECTORS = [".modal", "#jarvis-swirl-overlay"];
+		const lastSent = new Map();
+		function isShown(el) {
+			if (!el) { return false; }
+			const cs = getComputedStyle(el);
+			if (cs.display === "none" || cs.visibility === "hidden") { return false; }
+			const r = el.getBoundingClientRect();
+			return r.width > 0 && r.height > 0;
+		}
+		function frame() {
+			try {
+				const wcvTabs = tabs.filter((t) => t.backing && t.backing.kind === "wcv");
+				if (wcvTabs.length) {
+					const contentRect = contentEl.getBoundingClientRect();
+					let modalOpen = false;
+					for (const sel of MODAL_SELECTORS) {
+						for (const el of document.querySelectorAll(sel)) {
+							if (isShown(el)) { modalOpen = true; break; }
+						}
+						if (modalOpen) { break; }
+					}
+					let insetTop = 0;
+					if (!modalOpen) {
+						for (const sel of OVERLAY_SELECTORS) {
+							for (const el of document.querySelectorAll(sel)) {
+								if (!isShown(el)) { continue; }
+								const r = el.getBoundingClientRect();
+								const overlaps = r.bottom > contentRect.top && r.top < contentRect.bottom && r.right > contentRect.left && r.left < contentRect.right;
+								if (overlaps) { insetTop = Math.max(insetTop, r.bottom - contentRect.top); }
+							}
+						}
+					}
+					const layouts = [];
+					for (const t of wcvTabs) {
+						const ph = t.webview && t.webview.__el;
+						if (!ph || !ph.isConnected) { continue; }
+						const r = ph.getBoundingClientRect();
+						const visible = !modalOpen && isShown(ph);
+						const layout = { id: t.id, x: Math.round(r.left), y: Math.round(r.top + insetTop), width: Math.round(r.width), height: Math.max(0, Math.round(r.height - insetTop)), visible: visible };
+						const key = layout.x + "|" + layout.y + "|" + layout.width + "|" + layout.height + "|" + layout.visible;
+						if (lastSent.get(t.id) !== key) {
+							lastSent.set(t.id, key);
+							layouts.push(layout);
+						}
+					}
+					if (layouts.length) {
+						globalThis.electronAPI.invoke("tab:layout", { layouts }).catch((err) => {
+							console.warn("[wcv] layout send failed:", err && err.message);
+						});
+					}
+				}
+			} catch (err) {
+				console.warn("[wcv] layout pump error:", err && err.message);
+			}
+			requestAnimationFrame(frame);
+		}
+		requestAnimationFrame(frame);
+	}
+
 	function setActiveTab(id) {
 		// [NRS-1301]
 		if (splitViewEnabled && splitPartnerId === id) {
@@ -1819,6 +1932,9 @@ webview.src = url; // [NRS-1301]
 			const currentUrl = tab.webview.getURL?.() || tab.webview.src || ""; // [NRS-1301]
 			setOmnibox(currentUrl); // [NRS-1301]
 			applySitePermissions(tab, getOrigin(currentUrl)); // [NRS-1301]
+			if (tab.backing && tab.backing.kind === "wcv") {
+				globalThis.electronAPI.invoke("tab:activate", { id }).catch((err) => console.warn("[wcv] activate failed:", err && err.message));
+			}
 		} // [NRS-1301]
 	} // [NRS-1301]
 
@@ -1844,6 +1960,35 @@ webview.src = url; // [NRS-1301]
 			saveSession(); // [NRS-1301]
 		} // [NRS-1301]
 	} // [NRS-1301]
+
+	// [SovereignBrowser] Main-process pushes: tab events for the WCV backing,
+	// pages opening new tabs, and the extension system's tab requests - which
+	// previously had NO receiver in this file at all.
+	if (globalThis.electronAPI && typeof globalThis.electronAPI.on === "function") {
+		try {
+			globalThis.electronAPI.on("tab:event", (msg) => {
+				if (!msg) { return; }
+				const t = tabs.find((x) => x.id === msg.id);
+				if (t && t.backing && typeof t.backing.__handleMainEvent === "function") {
+					t.backing.__handleMainEvent(msg.event, msg.payload, msg.nav);
+				}
+			});
+			globalThis.electronAPI.on("holly:open-url-in-new-tab", (msg) => {
+				if (msg && msg.url) { try { createTab(msg.url); } catch (err) { console.warn("[wcv] open-in-new-tab failed:", err && err.message); } }
+			});
+			globalThis.electronAPI.on("ext:create-tab", (msg) => {
+				try { createTab((msg && msg.url) || DEFAULT_HOME); } catch (err) { console.warn("[ext] create-tab failed:", err && err.message); }
+			});
+			globalThis.electronAPI.on("ext:select-tab", (msg) => {
+				if (msg && msg.tabId != null && tabs.some((t) => t.id === msg.tabId)) { setActiveTab(msg.tabId); }
+			});
+			globalThis.electronAPI.on("ext:remove-tab", (msg) => {
+				if (msg && msg.tabId != null && tabs.some((t) => t.id === msg.tabId)) { closeTab(msg.tabId); }
+			});
+		} catch (err) {
+			console.warn("[wcv] could not subscribe to main-process events:", err && err.message);
+		}
+	}
 
 	btnBack.addEventListener("click", () => {
 		// [NRS-1301]
