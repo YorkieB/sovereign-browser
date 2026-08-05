@@ -1,0 +1,182 @@
+#!/usr/bin/env node
+// ai-revert — READ-ONLY revert inspector (Phase 4 foundation).
+//
+// AUDIT NOTE: the only git subcommands this file calls are:
+//   log, rev-list, diff, show, rev-parse
+// All read-only. There is no code path here that calls revert, reset,
+// stash, tag (with -d), commit, or writes to any file. A future, separate
+// action adds the actual mutating revert/confirm/backup path.
+//
+// Usage:
+//   node scripts/ai-revert                 -> list recent candidates
+//   node scripts/ai-revert <action-id>     -> inspect by logged action id
+//   node scripts/ai-revert <commit-hash>   -> inspect by commit hash
+
+import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+
+const JSONL_PATH = "logs/ai-action-log.jsonl";
+const PROTECTED_PREFIXES = ["logs/", ".env", "backups/"];
+const LIST_COUNT = 20;
+
+function git(args) {
+	return execFileSync("git", args, { encoding: "utf-8" }).trim();
+}
+
+function readActionLog() {
+	let raw;
+	try {
+		raw = readFileSync(JSONL_PATH, "utf-8");
+	} catch (err) {
+		console.error(`[ai-revert] Could not read ${JSONL_PATH}: ${err.message}`);
+		return { byCommit: new Map(), byActionId: new Map() };
+	}
+	const byCommit = new Map();
+	const byActionId = new Map();
+	const lines = raw.split("\n").filter((l) => l.trim().length > 0);
+	for (const [i, line] of lines.entries()) {
+		let entry;
+		try {
+			entry = JSON.parse(line);
+		} catch (err) {
+			console.warn(`[ai-revert] Skipping unparsable log line ${i + 1}: ${err.message}`);
+			continue;
+		}
+		if (entry.action_id != null) byActionId.set(String(entry.action_id), entry);
+		if (entry.commit) byCommit.set(entry.commit, entry);
+	}
+	return { byCommit, byActionId };
+}
+
+function recentCommits(count) {
+	const sep = "\x1f";
+	const out = git(["log", `-${count}`, `--format=%H${sep}%h${sep}%s`]);
+	if (!out) return [];
+	return out.split("\n").map((line) => {
+		const [hash, short, subject] = line.split(sep);
+		return { hash, short, subject };
+	});
+}
+
+function parents(hash) {
+	const out = git(["rev-list", "--parents", "-1", hash]);
+	return out.split(" ").filter(Boolean).slice(1); // drop the commit itself
+}
+
+function touchedFiles(hash) {
+	const p = parents(hash);
+	if (p.length > 1) {
+		// Merge commit: diff against the first (mainline) parent, matching
+		// how `git revert -m 1` would be interpreted if that were ever added.
+		const out = git(["diff", "--name-only", p[0], hash]);
+		return out ? out.split("\n").filter(Boolean) : [];
+	}
+	const out = git(["show", "--name-only", "--format=", hash]);
+	return out ? out.split("\n").filter(Boolean) : [];
+}
+
+function protectedPathHits(files) {
+	return files.filter((f) =>
+		PROTECTED_PREFIXES.some((p) => f === p.replace(/\/$/, "") || f.startsWith(p)),
+	);
+}
+
+function eligibility(hash, logEntry) {
+	const reasons = [];
+	if (logEntry && logEntry.revertable === false) {
+		reasons.push(`log entry for action ${logEntry.action_id} is explicitly marked revertable:false`);
+	}
+	if (logEntry && !logEntry.commit) {
+		reasons.push(`log entry for action ${logEntry.action_id} has no commit (commit:null) - nothing to revert`);
+	}
+	const p = parents(hash);
+	const isMerge = p.length > 1;
+	if (isMerge) {
+		reasons.push(`merge commit (${p.length} parents) - needs -m <parent-number>, not handled by this read-only build`);
+	}
+	const files = touchedFiles(hash);
+	const hits = protectedPathHits(files);
+	if (hits.length) {
+		reasons.push(`touches protected path(s): ${hits.join(", ")}`);
+	}
+	return { eligible: reasons.length === 0, reasons, isMerge, files, protectedHits: hits };
+}
+
+function formatList() {
+	const { byCommit, byActionId } = readActionLog();
+	const commits = recentCommits(LIST_COUNT);
+	console.log(`[ai-revert] Read-only listing - last ${commits.length} commits, cross-referenced with ${JSONL_PATH}\n`);
+	for (const c of commits) {
+		const entry = byCommit.get(c.hash);
+		const elig = eligibility(c.hash, entry);
+		const label = entry ? `action ${entry.action_id}` : "no log entry";
+		const tag = elig.eligible ? `${label} - eligible` : `${label} - INELIGIBLE (${elig.reasons.join("; ")})`;
+		console.log(`${c.short}  ${c.subject}`);
+		console.log(`    -> ${tag}`);
+	}
+
+	// Logged actions with no commit at all (e.g. a deleted tag) can never
+	// surface from the commit-driven loop above - list them separately so
+	// nothing stays invisible.
+	const noCommitActions = [...byActionId.values()].filter((e) => !e.commit);
+	if (noCommitActions.length) {
+		console.log("\n--- logged actions with no commit (not revertable via this tool) ---");
+		for (const e of noCommitActions) {
+			const why = e.revertable === false ? "revertable:false in the log" : "commit:null in the log";
+			console.log(`action ${e.action_id}: ${e.instruction}`);
+			console.log(`    -> INELIGIBLE (no commit associated - ${why})`);
+		}
+	}
+
+	console.log("\n[ai-revert] Read-only inspector - no revert capability in this build.");
+}
+
+function formatInspect(target) {
+	const { byCommit, byActionId } = readActionLog();
+	let hash = null;
+	let logEntry = null;
+
+	if (byActionId.has(target)) {
+		logEntry = byActionId.get(target);
+		if (!logEntry.commit) {
+			console.log(`[ai-revert] Action ${target}: no commit associated (commit:null in the log).`);
+			console.log("[ai-revert] Not eligible for revert via this tool - nothing to revert.");
+			return;
+		}
+		hash = logEntry.commit;
+	} else {
+		try {
+			hash = git(["rev-parse", "--verify", target]);
+		} catch (err) {
+			console.error(`[ai-revert] "${target}" is not a known action id and not a valid commit: ${err.message}`);
+			process.exitCode = 1;
+			return;
+		}
+		logEntry = byCommit.get(hash) || null;
+	}
+
+	console.log(`[ai-revert] Inspecting ${hash}${logEntry ? ` (action ${logEntry.action_id})` : " (no log entry)"}\n`);
+	console.log("--- git show --stat ---");
+	console.log(git(["show", "--stat", hash]));
+
+	const elig = eligibility(hash, logEntry);
+	console.log("\n--- eligibility (informational only - no revert capability in this build) ---");
+	console.log(`Merge commit: ${elig.isMerge ? "yes" : "no"}`);
+	console.log(`Files touched: ${elig.files.join(", ") || "(none detected)"}`);
+	console.log(`Protected-path hit: ${elig.protectedHits.length ? elig.protectedHits.join(", ") : "none"}`);
+	console.log(`Eligible for a future revert: ${elig.eligible ? "YES" : "NO"}`);
+	if (!elig.eligible) {
+		console.log(`Reason(s): ${elig.reasons.join("; ")}`);
+	}
+}
+
+function main() {
+	const target = process.argv[2];
+	if (!target) {
+		formatList();
+	} else {
+		formatInspect(target);
+	}
+}
+
+main();
