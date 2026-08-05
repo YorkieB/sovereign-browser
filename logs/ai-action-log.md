@@ -25,3 +25,7 @@ Commit: 9a4c6acfd729684371bd6bd00c22251b77a79bf6  Status: success
 ### 2026-08-05T21:27:54+01:00 — 006
 Instruction: add checkpoint script and commit discipline docs
 Commit: 26e3d8eca95cd9a1cde1f1fd048137f9b393d6f5  Status: success
+
+### 2026-08-05T21:38:41+01:00 — 008
+Instruction: Remove checkpoint-2026-08-05_212737 (created during ai-checkpoint script testing, not a real pre-action safe point)
+Commit: -  Status: success
