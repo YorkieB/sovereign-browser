@@ -29,3 +29,7 @@ Commit: 26e3d8eca95cd9a1cde1f1fd048137f9b393d6f5  Status: success
 ### 2026-08-05T21:38:41+01:00 — 008
 Instruction: Remove checkpoint-2026-08-05_212737 (created during ai-checkpoint script testing, not a real pre-action safe point)
 Commit: -  Status: success
+
+### 2026-08-05T21:44:25+01:00 — 010
+Instruction: Fix scripts/ai-checkpoint so checkpoint purpose is explicit even when no commit is created; require a non-empty label
+Commit: 6053eed05b95effcc9bdb108887402ce4233baeb  Status: success
