@@ -616,10 +616,43 @@ async function setupChromeExtensions() {
   // [SovereignBrowser] Views created before this point could not register with
   // the extension system; register them now.
   if (tabViews) { tabViews.attachExtensions(chromeExtensions); }
-  await installChromeWebStore({
-    session: browserSession,
-    modulePath: path.join(__dirname, 'node_modules', 'electron-chrome-web-store'),
-  });
+  try {
+    await installChromeWebStore({
+      session: browserSession,
+      modulePath: path.join(__dirname, 'node_modules', 'electron-chrome-web-store'),
+    });
+  } catch (err) {
+    console.error('[Holly] Web Store restore failed (continuing to disk fallback):', err.message);
+  }
+
+  // [SovereignBrowser] Self-healing restore: if the store restored nothing but
+  // installed extensions exist on disk, load them directly. A transient store
+  // failure must never cost a whole session its extensions - which is exactly
+  // what happened on the 05/08 00:11 launch.
+  try {
+    if (sessionExtensions().getAllExtensions().length === 0) {
+      const dir = EXTENSIONS_DIR();
+      const ids = fs.existsSync(dir) ? fs.readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()) : [];
+      for (const idDir of ids) {
+        const versions = fs.readdirSync(path.join(dir, idDir.name), { withFileTypes: true })
+          .filter((d) => d.isDirectory())
+          .map((d) => d.name)
+          .sort();
+        const newest = versions[versions.length - 1];
+        if (!newest) { continue; }
+        const extPath = path.join(dir, idDir.name, newest);
+        if (!fs.existsSync(path.join(extPath, 'manifest.json'))) { continue; }
+        try {
+          const loaded = await browserSession.loadExtension(extPath);
+          console.log('[Holly] Disk-fallback loaded', loaded.name, loaded.version);
+        } catch (err) {
+          console.warn('[Holly] Disk-fallback load failed for', idDir.name, '-', err.message);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Holly] Disk-fallback scan failed:', err.message);
+  }
 
   // The store restores everything it knows about, so unload whatever the user
   // has disabled. Electron has no installed-but-disabled state of its own.
