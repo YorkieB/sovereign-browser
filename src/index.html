@@ -8,74 +8,6 @@
 		<link rel="stylesheet" href="style.css"><!-- [NRS-1301] -->
 	</head><!-- [NRS-1301] -->
 	<body><!-- [NRS-1301] -->
-		<div id="menu-bar"><!-- [NRS-1301] -->
-			<div class="menu-item"><!-- [NRS-1301] -->
-				<button class="menu-label">File</button><!-- [NRS-1301] -->
-				<div class="menu-dropdown"><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="new-tab">New Tab</div><!-- [NRS-1301] -->
-					<div class="menu-separator"></div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="close-tab">Close Tab</div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="close-window">Close Window</div><!-- [NRS-1301] -->
-					<div class="menu-separator"></div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="exit-app">Exit</div><!-- [NRS-1301] -->
-				</div><!-- [NRS-1301] -->
-			</div><!-- [NRS-1301] -->
-			<div class="menu-item"><!-- [NRS-1301] -->
-				<button class="menu-label">Edit</button><!-- [NRS-1301] -->
-				<div class="menu-dropdown"><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="undo">Undo</div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="redo">Redo</div><!-- [NRS-1301] -->
-					<div class="menu-separator"></div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="cut">Cut</div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="copy">Copy</div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="paste">Paste</div><!-- [NRS-1301] -->
-					<div class="menu-separator"></div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="find">Find in Page</div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="settings">Settings</div><!-- [NRS-1301] -->
-				</div><!-- [NRS-1301] -->
-			</div><!-- [NRS-1301] -->
-			<div class="menu-item"><!-- [NRS-1301] -->
-				<button class="menu-label">View</button><!-- [NRS-1301] -->
-				<div class="menu-dropdown"><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="reload">Reload</div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="full-screen">Full Screen</div><!-- [NRS-1301] -->
-					<div class="menu-separator"></div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="zoom-in">Zoom In</div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="zoom-out">Zoom Out</div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="zoom-reset">Reset Zoom</div><!-- [NRS-1301] -->
-					<div class="menu-separator"></div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="devtools">Developer Tools</div><!-- [NRS-1301] -->
-				</div><!-- [NRS-1301] -->
-			</div><!-- [NRS-1301] -->
-			<div class="menu-item"><!-- [NRS-1301] -->
-				<button class="menu-label">History</button><!-- [NRS-1301] -->
-				<div class="menu-dropdown"><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="go-back">Back</div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="go-forward">Forward</div><!-- [NRS-1301] -->
-					<div class="menu-separator"></div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="clear-history">
-						Clear History
-					</div><!-- [NRS-1301] -->
-				</div><!-- [NRS-1301] -->
-			</div><!-- [NRS-1301] -->
-			<div class="menu-item"><!-- [NRS-1301] -->
-				<button class="menu-label">Bookmarks</button><!-- [NRS-1301] -->
-				<div class="menu-dropdown"><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="bookmark-page">
-						Bookmark This Page
-					</div><!-- [NRS-1301] -->
-					<div class="menu-separator"></div><!-- [NRS-1301] -->
-					<div id="bookmarks-menu-list"></div><!-- [NRS-1301] -->
-				</div><!-- [NRS-1301] -->
-			</div><!-- [NRS-1301] -->
-			<div class="menu-item"><!-- [NRS-1301] -->
-				<button class="menu-label">Help</button><!-- [NRS-1301] -->
-				<div class="menu-dropdown"><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="about">About HOLLY</div><!-- [NRS-1301] -->
-					<div class="menu-option" data-action="report-issue">Report Issue</div><!-- [NRS-1301] -->
-				</div><!-- [NRS-1301] -->
-			</div><!-- [NRS-1301] -->
-		</div><!-- [NRS-1301] -->
 		<div id="toolbar"><!-- [NRS-1301] -->
 			<div class="left"><!-- [NRS-1301] -->
 				<button id="btn-back" title="Back">&#10229;</button>
@@ -128,6 +60,18 @@
 							<button id="btn-ovf-extensions" title="Extensions">&#129513;</button>
 							<span class="ovf-label">Extensions</span>
 						</div>
+						<div class="ovf-sep"></div>
+						<div class="ovf-row" role="menuitem"><button data-action="find" title="Find in page">&#128269;</button><span class="ovf-label">Find in page</span></div>
+						<div class="ovf-row" role="menuitem"><button data-action="reload" title="Reload">&#10227;</button><span class="ovf-label">Reload</span></div>
+						<div class="ovf-row" role="menuitem"><button data-action="full-screen" title="Full screen">&#9974;</button><span class="ovf-label">Full screen</span></div>
+						<div class="ovf-row" role="menuitem"><button data-action="zoom-in" title="Zoom in">&#43;</button><span class="ovf-label">Zoom in</span></div>
+						<div class="ovf-row" role="menuitem"><button data-action="zoom-out" title="Zoom out">&#8722;</button><span class="ovf-label">Zoom out</span></div>
+						<div class="ovf-row" role="menuitem"><button data-action="zoom-reset" title="Reset zoom">&#8634;</button><span class="ovf-label">Reset zoom</span></div>
+						<div class="ovf-sep"></div>
+						<div class="ovf-row" role="menuitem"><button data-action="bookmark-page" title="Bookmark this page">&#9733;</button><span class="ovf-label">Bookmark this page</span></div>
+						<div class="ovf-row" role="menuitem"><button data-action="clear-history" title="Clear history">&#128465;</button><span class="ovf-label">Clear history</span></div>
+						<div class="ovf-sep"></div>
+						<div class="ovf-row" role="menuitem"><button data-action="about" title="About HOLLY">&#8505;</button><span class="ovf-label">About HOLLY</span></div>
 						<div class="ovf-sep"></div>
 						<div class="ovf-row" role="menuitem">
 							<button id="btn-settings" title="Settings">&#9881;</button>

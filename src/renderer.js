@@ -139,6 +139,16 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 	const btnBookmark = document.getElementById("btn-bookmark"); // [NRS-1303] Bookmark button
 	const btnTabGroupA = document.getElementById("btn-tab-group-a"); // [NRS-1303] Tab group A button
 	const btnTabGroupB = document.getElementById("btn-tab-group-b"); // [NRS-1303] Tab group B button
+	// [SovereignBrowser] Overflow rows that carry data-action (folded in from
+	// the removed menu bar) dispatch through the shared handler. The native
+	// popup calls button.click(), so a delegated click listener catches them.
+	const ovfMenuEl = document.getElementById("overflow-menu");
+	if (ovfMenuEl) {
+		ovfMenuEl.addEventListener("click", (e) => {
+			const btn = e.target.closest("button[data-action]");
+			if (btn && btn.dataset.action) { handleMenuAction(btn.dataset.action); }
+		});
+	}
 	const btnSplitView = document.getElementById("btn-split-view"); // [NRS-1303] Split view toggle
 	const btnDevtools = document.getElementById("btn-devtools"); // [NRS-1303] DevTools button
 	const btnDevtoolsAuto = document.getElementById("btn-devtools-auto"); // [NRS-1303] Auto DevTools button
@@ -2157,16 +2167,7 @@ webview.src = url; // [NRS-1301]
 				});
 			}, true);
 		}
-		for (const mi of document.querySelectorAll("#menu-bar .menu-item")) {
-			const lbl = mi.querySelector(".menu-label");
-			const dd = mi.querySelector(".menu-dropdown");
-			if (!lbl || !dd) { continue; }
-			lbl.addEventListener("click", (e) => {
-				e.preventDefault();
-				e.stopImmediatePropagation();
-				popupNativeMenu(dd, lbl, null, (child) => (child.classList && child.classList.contains("menu-option")) ? (child.textContent || "").trim() : "");
-			}, true);
-		}
+		// [SovereignBrowser] Menu bar removed (Edge layout); its items live in the overflow menu now.
 	}
 	btnBack.addEventListener("click", () => {
 		// [NRS-1301]
