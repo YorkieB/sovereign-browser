@@ -133,12 +133,22 @@ const OPENAI_API_KEY = "lm-studio"; // LM Studio ignores the value, header must 
 	const btnForward = document.getElementById("btn-forward"); // [NRS-1303] Forward navigation button
 	const btnReload = document.getElementById("btn-reload"); // [NRS-1303] Reload page button
 const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home button
-	const btnNewWindow = document.getElementById("btn-new-window"); // [NRS-1303] New window button
-	const btnNewIncognito = document.getElementById("btn-new-incognito"); // [NRS-1303] Incognito mode button
+	const btnNewWindow = null; // [SovereignBrowser] New Window removed pending true multi-window support (per-sender-window tab-IPC refactor); HOLLY is single-window for now
+	const btnNewIncognito = null; // [SovereignBrowser] Incognito removed - every HOLLY tab is already a private, non-persistent session
 	const btnNewTab = document.getElementById("btn-new-tab"); // [NRS-1303] New tab button
 	const btnBookmark = document.getElementById("btn-bookmark"); // [NRS-1303] Bookmark button
 	const btnTabGroupA = document.getElementById("btn-tab-group-a"); // [NRS-1303] Tab group A button
 	const btnTabGroupB = document.getElementById("btn-tab-group-b"); // [NRS-1303] Tab group B button
+	// [SovereignBrowser] Overflow rows that carry data-action (folded in from
+	// the removed menu bar) dispatch through the shared handler. The native
+	// popup calls button.click(), so a delegated click listener catches them.
+	const ovfMenuEl = document.getElementById("overflow-menu");
+	if (ovfMenuEl) {
+		ovfMenuEl.addEventListener("click", (e) => {
+			const btn = e.target.closest("button[data-action]");
+			if (btn && btn.dataset.action) { handleMenuAction(btn.dataset.action); }
+		});
+	}
 	const btnSplitView = document.getElementById("btn-split-view"); // [NRS-1303] Split view toggle
 	const btnDevtools = document.getElementById("btn-devtools"); // [NRS-1303] DevTools button
 	const btnDevtoolsAuto = document.getElementById("btn-devtools-auto"); // [NRS-1303] Auto DevTools button
@@ -1917,6 +1927,7 @@ webview.src = url; // [NRS-1301]
 		const OVERLAY_SELECTORS = ["#omnibox-suggestions", ".context-menu", "#find-bar"]; // menus are native in WCV mode
 		const MODAL_SELECTORS = [".modal", "#jarvis-swirl-overlay"];
 		const lastSent = new Map();
+		const pending = new Map(); // [SovereignBrowser] anti-jitter: key -> frames-seen
 		function isShown(el) {
 			if (!el) { return false; }
 			const cs = getComputedStyle(el);
@@ -1956,8 +1967,18 @@ webview.src = url; // [NRS-1301]
 						const layout = { id: t.id, x: Math.round(r.left), y: Math.round(r.top + insetTop), width: Math.round(r.width), height: Math.max(0, Math.round(r.height - insetTop)), visible: visible };
 						const key = layout.x + "|" + layout.y + "|" + layout.width + "|" + layout.height + "|" + layout.visible;
 						if (lastSent.get(t.id) !== key) {
-							lastSent.set(t.id, key);
-							layouts.push(layout);
+							// A change must persist for 2 consecutive frames before we act on
+							// it. Sub-pixel rounding at a boundary can flip the rect back and
+							// forth each frame; without this the WebContentsView visibly shakes.
+							const seen = (pending.get(t.id) && pending.get(t.id).key === key) ? pending.get(t.id).n + 1 : 1;
+							pending.set(t.id, { key: key, n: seen });
+							if (seen >= 2) {
+								lastSent.set(t.id, key);
+								pending.delete(t.id);
+								layouts.push(layout);
+							}
+						} else {
+							pending.delete(t.id);
 						}
 					}
 					if (layouts.length) {
@@ -2144,16 +2165,7 @@ webview.src = url; // [NRS-1301]
 				});
 			}, true);
 		}
-		for (const mi of document.querySelectorAll("#menu-bar .menu-item")) {
-			const lbl = mi.querySelector(".menu-label");
-			const dd = mi.querySelector(".menu-dropdown");
-			if (!lbl || !dd) { continue; }
-			lbl.addEventListener("click", (e) => {
-				e.preventDefault();
-				e.stopImmediatePropagation();
-				popupNativeMenu(dd, lbl, null, (child) => (child.classList && child.classList.contains("menu-option")) ? (child.textContent || "").trim() : "");
-			}, true);
-		}
+		// [SovereignBrowser] Menu bar removed (Edge layout); its items live in the overflow menu now.
 	}
 	btnBack.addEventListener("click", () => {
 		// [NRS-1301]
@@ -2206,7 +2218,7 @@ btnHome.addEventListener("click", () => {
 				// [NRS-1301]
 				if (globalThis.electronAPI?.openNewWindow) {
 					// [NRS-1301]
-					globalThis.electronAPI.openNewWindow(); // [NRS-1301]
+					globalThis.electronAPI.invoke("holly:window:new"); // [NRS-1301]
 				} else {
 					// [NRS-1301]
 					createTab(DEFAULT_HOME); // [NRS-1301]
@@ -6424,16 +6436,15 @@ omnibox.addEventListener("input", (e) => {
 		const actionMap = {
 			// [NRS-1301]
 			"new-tab": () => createTab(DEFAULT_HOME), // [NRS-1301]
-			"new-window": () => {
+			"new-window": () => { // [SovereignBrowser] unreachable: New Window removed from all menus; kept as no-op guard
 				// [NRS-1301]
 				try {
 					// [NRS-1301]
-					if (globalThis.electronAPI?.openNewWindow) globalThis.electronAPI.openNewWindow(); // else createTab(DEFAULT_HOME); // [NRS-1301]
+					globalThis.electronAPI.invoke("holly:window:new");
 				} catch {
 					createTab(DEFAULT_HOME);
 				} // [NRS-1301]
 			}, // [NRS-1301]
-			"new-incognito": () => createTab(DEFAULT_HOME, { incognito: true }), // [NRS-1301]
 			"close-tab": () => {
 				// [NRS-1301]
 				if (activeTabId) closeTab(activeTabId); // [NRS-1301]
@@ -6441,13 +6452,13 @@ omnibox.addEventListener("input", (e) => {
 			"close-window": () => {
 				// [NRS-1301]
 				try {
-					globalThis.electronAPI?.closeWindow?.();
+					globalThis.electronAPI.invoke("holly:window:close");
 				} catch {} // [NRS-1301]
 			}, // [NRS-1301]
 			"exit-app": () => {
 				// [NRS-1301]
 				try {
-					globalThis.electronAPI?.exitApp?.();
+					globalThis.electronAPI.invoke("holly:app:exit");
 				} catch {} // [NRS-1301]
 			}, // [NRS-1301]
 			undo: () => {
