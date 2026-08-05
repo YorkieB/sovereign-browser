@@ -22,6 +22,7 @@ const SNAPSHOT_SRC = `(() => {
           ref: refs.length,
           tag: el.tagName.toLowerCase(),
           type: el.type || undefined,
+          href: (el.tagName === 'A' && el.href) ? String(el.href).slice(0, 140) : undefined,
           label: label,
           inViewport: r.bottom > 0 && r.top < innerHeight,
         });

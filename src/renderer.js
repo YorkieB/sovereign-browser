@@ -4051,7 +4051,7 @@ btnHome.addEventListener("click", () => {
 		{ type: "function", function: { name: "browser_tabs", description: "List open tabs.", parameters: { type: "object", properties: {} } } },
 		{ type: "function", function: { name: "browser_new_tab", description: "Open a new tab, optionally at a url.", parameters: { type: "object", properties: { url: { type: "string" } } } } },
 	];
-	const HOLLY_TOOL_CHANNELS = { browser_page_state: "holly:auto:page-state", browser_click: "holly:auto:click", browser_type: "holly:auto:type", browser_navigate: "holly:auto:navigate", browser_scroll: "holly:auto:scroll", browser_wait_for: "holly:auto:wait-for", browser_tabs: "holly:auto:tabs", browser_new_tab: "holly:auto:tab-new" };
+	const HOLLY_TOOL_CHANNELS = { browser_page_state: "holly:auto:page-state", browser_click: "holly:auto:click", browser_type: "holly:auto:type", browser_navigate: "holly:auto:navigate", browser_scroll: "holly:auto:scroll", browser_wait_for: "holly:auto:wait-for", browser_tabs: "holly:auto:tabs", browser_new_tab: "holly:auto:tab-new", browser_screenshot: "holly:auto:screenshot" };
 	let hollyAgentRunning = false;
 	let hollyAgentStop = false;
 	async function runHollyTool(name, args) {
@@ -4072,10 +4072,73 @@ btnHome.addEventListener("click", () => {
 		if (result && result.ok === false) { line += " - failed: " + (result.error || "unknown"); }
 		addJarvisMessage("\u2699 " + line, false);
 	}
+	let hollyAttachment = null;
+	function hollySetAttachment(att) {
+		hollyAttachment = att;
+		const btn = document.getElementById("holly-attach");
+		if (btn) { btn.classList.toggle("has-file", !!att); btn.title = att ? ("Attached: " + att.name + " (click to clear)") : "Attach an image or text file"; }
+	}
+	async function hollyGroundContext() {
+		const res = await runHollyTool("browser_page_state", {});
+		if (!res || !res.ok || !res.state) { return "PAGE CONTEXT UNAVAILABLE: " + ((res && res.error) || "unknown"); }
+		const st = res.state;
+		const els = (st.elements || []).slice(0, 60).map((el) => "[" + el.ref + "] " + el.tag + (el.type ? ":" + el.type : "") + " " + (el.label || "") + (el.href ? " -> " + el.href : "")).join("\n");
+		return "CURRENT PAGE (fresh snapshot)\nURL: " + st.url + "\nTITLE: " + st.title + "\n\nVISIBLE TEXT (truncated):\n" + (st.text || "").slice(0, 2600) + "\n\nINTERACTIVE ELEMENTS (refs for browser_click / browser_type):\n" + els;
+	}
+	async function hollyOneShot(oneShotMessages) {
+		const resp = await fetch(OPENAI_BASE + "/chat/completions", {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
+			body: JSON.stringify({ model: LLM_MODEL, messages: oneShotMessages, temperature: 0.3 }),
+		});
+		if (!resp.ok) { throw new Error("LM Studio " + resp.status + " " + resp.statusText); }
+		const data = await resp.json();
+		return ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || "(no reply)").trim();
+	}
+	async function runHollySkill(cmd) {
+		const thinking = addJarvisMessage("Working...", false);
+		try {
+			if (cmd === "/summarise" || cmd === "/summarize") {
+				const ctx = await hollyGroundContext();
+				const out = await hollyOneShot([
+					{ role: "system", content: "You are Holly. Summarise the page below for the user in a few clear sentences plus key points. Use ONLY the text provided - never invent content." },
+					{ role: "user", content: ctx },
+				]);
+				conversationHistory.push({ role: "assistant", content: out });
+				addJarvisMessage(out, false);
+				return;
+			}
+			if (cmd === "/links") {
+				const res = await runHollyTool("browser_page_state", {});
+				if (!res || !res.ok) { addJarvisMessage("Could not read the page: " + ((res && res.error) || "unknown"), false); return; }
+				const links = (res.state.elements || []).filter((el) => el.tag === "a" && el.href).slice(0, 30);
+				if (!links.length) { addJarvisMessage("No links found in view.", false); return; }
+				addJarvisMessage(links.map((l) => "\u2022 " + (l.label || "(no text)") + "\n  " + l.href).join("\n"), false);
+				return;
+			}
+			if (cmd === "/describe") {
+				const shot = await runHollyTool("browser_screenshot", {});
+				if (!shot || !shot.ok || !shot.dataUrl) { addJarvisMessage("Could not capture the screen: " + ((shot && shot.error) || "unknown"), false); return; }
+				const out = await hollyOneShot([
+					{ role: "system", content: "You are Holly. Describe what is on this screenshot of the current browser tab: layout, main content, notable elements. Be concrete and brief." },
+					{ role: "user", content: [ { type: "text", text: "Describe this page screenshot." }, { type: "image_url", image_url: { url: shot.dataUrl } } ] },
+				]);
+				conversationHistory.push({ role: "assistant", content: out });
+				addJarvisMessage(out, false);
+				return;
+			}
+			addJarvisMessage("Unknown skill: " + cmd + " (try /summarise, /describe, /links)", false);
+		} catch (err) {
+			addJarvisMessage("Skill failed: " + err.message, false);
+		} finally {
+			if (thinking && thinking.remove) { thinking.remove(); }
+		}
+	}
 	async function sendToHolly() {
 		const query = jarvisInput.value.trim();
 		if (!query) { return; }
 		if (hollyAgentRunning) { addJarvisMessage("Holly is already working - press Esc to stop her first.", false); return; }
+		if (query.startsWith("/")) { 			addJarvisMessage(query, true); 			jarvisInput.value = ""; 			await runHollySkill(query.trim().toLowerCase()); 			return; 		}
 		addJarvisMessage(query, true);
 		jarvisInput.value = "";
 		conversationHistory.push({ role: "user", content: query });
@@ -4083,9 +4146,24 @@ btnHome.addEventListener("click", () => {
 		hollyAgentStop = false;
 		const thinking = addJarvisMessage("Working...", false);
 		const messages = [
-			{ role: "system", content: "You are Holly, the resident mind of this browser, with REAL control of the active tab through tools. Method: call browser_page_state first to see the page and its numbered elements; act with browser_click / browser_type using those refs; after anything changes, read the page again before the next action. Refs go stale after navigation. Keep going until the task is done, then answer in plain language with what you found or did. Be decisive and brief." },
-			...conversationHistory,
+			{ role: "system", content: "You are Holly, the resident mind of this browser, with REAL control of the active tab through tools. Method: call browser_page_state first to see the page and its numbered elements; act with browser_click / browser_type using those refs; after anything changes, read the page again before the next action. Refs go stale after navigation. Keep going until the task is done, then answer in plain language with what you found or did. You are never looking at an image unless one is explicitly attached - page content reaches you as text snapshots. Never invent page content; ground every statement in the CURRENT PAGE context or a fresh browser_page_state result. Be decisive and brief." },
+			...conversationHistory.slice(0, -1).slice(-8),
 		];
+		try {
+			messages.push({ role: "system", content: await hollyGroundContext() });
+		} catch (err) {
+			messages.push({ role: "system", content: "PAGE CONTEXT UNAVAILABLE: " + err.message });
+		}
+		let hollyUserMsg = { role: "user", content: query };
+		if (hollyAttachment && hollyAttachment.kind === "image") {
+			hollyUserMsg = { role: "user", content: [ { type: "text", text: query || "Describe this image." }, { type: "image_url", image_url: { url: hollyAttachment.dataUrl } } ] };
+			addJarvisMessage("\uD83D\uDCCE using attached image: " + hollyAttachment.name, false);
+		} else if (hollyAttachment && hollyAttachment.kind === "text") {
+			messages.push({ role: "system", content: "ATTACHED FILE " + hollyAttachment.name + ":\n" + hollyAttachment.text.slice(0, 9000) });
+			addJarvisMessage("\uD83D\uDCCE using attached file: " + hollyAttachment.name, false);
+		}
+		messages.push(hollyUserMsg);
+		hollySetAttachment(null);
 		try {
 			for (let step = 0; step < 14; step++) {
 				if (hollyAgentStop) { addJarvisMessage("Stopped.", false); break; }
@@ -4126,6 +4204,50 @@ btnHome.addEventListener("click", () => {
 	jarvisInput.addEventListener("keydown", (e) => {
 		if (e.key === "Escape" && hollyAgentRunning) { hollyAgentStop = true; }
 	});
+	for (const chip of document.querySelectorAll(".holly-skill")) {
+		chip.addEventListener("click", () => {
+			if (hollyAgentRunning) { return; }
+			addJarvisMessage(chip.textContent, true);
+			runHollySkill(chip.dataset.skill);
+		});
+	}
+	const hollyAttachBtn = document.getElementById("holly-attach");
+	const hollyFileInput = document.getElementById("holly-file");
+	if (hollyAttachBtn && hollyFileInput) {
+		hollyAttachBtn.addEventListener("click", () => {
+			if (hollyAttachment) { hollySetAttachment(null); addJarvisMessage("Attachment cleared.", false); return; }
+			hollyFileInput.click();
+		});
+		hollyFileInput.addEventListener("change", () => {
+			const f = hollyFileInput.files && hollyFileInput.files[0];
+			hollyFileInput.value = "";
+			if (!f) { return; }
+			if (f.type.startsWith("image/")) {
+				const rd = new FileReader();
+				rd.onload = () => {
+					const img = new Image();
+					img.onload = () => {
+						const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
+						const cv = document.createElement("canvas");
+						cv.width = Math.round(img.width * scale);
+						cv.height = Math.round(img.height * scale);
+						cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+						hollySetAttachment({ kind: "image", name: f.name, dataUrl: cv.toDataURL("image/jpeg", 0.8) });
+						addJarvisMessage("\uD83D\uDCCE attached image: " + f.name + " - now ask Holly about it.", false);
+					};
+					img.src = rd.result;
+				};
+				rd.readAsDataURL(f);
+			} else {
+				const rd = new FileReader();
+				rd.onload = () => {
+					hollySetAttachment({ kind: "text", name: f.name, text: String(rd.result || "") });
+					addJarvisMessage("\uD83D\uDCCE attached file: " + f.name + " - now ask Holly about it.", false);
+				};
+				rd.readAsText(f);
+			}
+		});
+	}
 	async function sendToJarvis() {
 		// [NRS-1301]
 		const query = jarvisInput.value.trim(); // [NRS-1301]

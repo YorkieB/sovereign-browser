@@ -2408,3 +2408,10 @@ body.native-menus #overflow-menu {
 .ext-storelink { font-size: 13px; }
 .ext-remove { align-self: flex-start; font-size: 12.5px; padding: 6px 14px; border: 1px solid #d0d0d4; background: #fff; border-radius: 6px; cursor: pointer; }
 .ext-remove:hover { background: #f4f4f5; }
+
+/* [SovereignBrowser] Holly skills + attachments */
+.holly-skills { display: flex; gap: 6px; padding: 6px 8px; flex-wrap: wrap; }
+.holly-skill { font-size: 11.5px; padding: 4px 10px; border-radius: 999px; border: 1px solid #d0d0d4; background: #fff; cursor: pointer; }
+.holly-skill:hover { background: #f0f0f2; }
+#holly-attach { border: 1px solid #d0d0d4; background: #fff; border-radius: 8px; cursor: pointer; padding: 4px 8px; }
+#holly-attach.has-file { background: #e7f0ff; border-color: #9db8e8; }
