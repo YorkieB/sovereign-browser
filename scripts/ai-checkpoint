@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# ai-checkpoint — tag the current state as a known-good restore point.
+#
+# Usage (Git Bash on Windows):
+#   bash scripts/ai-checkpoint "label for what's about to happen"
+#
+# Behaviour:
+#   - Stages everything (git add -A). backups/ and .env are gitignored,
+#     so this never picks them up regardless of what's sitting in the tree.
+#   - If there ARE staged changes: commits them as
+#     "checkpoint: before action <label> (<timestamp>)".
+#   - If there are NO staged changes (working tree already matches HEAD):
+#     does NOT fabricate an empty commit. Prints that explicitly, then tags
+#     the current HEAD as-is. This is intentional and documented here: a
+#     checkpoint tag always exists after running this script, but a new
+#     commit is only created when there's actually something to checkpoint.
+#   - Either way: tags the resulting commit checkpoint-<timestamp> and
+#     prints its hash.
+#   - Any unexpected git failure (i.e. not the "nothing to commit" case)
+#     stops the script immediately via `set -e` and shows git's own error.
+#     Nothing here is caught and silenced.
+
+set -euo pipefail
+
+LABEL="${1:-unnamed}"
+TS="$(date +%Y-%m-%d_%H%M%S)"
+
+git add -A
+
+if git diff --cached --quiet; then
+	echo "ai-checkpoint: nothing staged to commit (working tree already matches HEAD)."
+	echo "ai-checkpoint: tagging the current HEAD as-is — no new commit created."
+else
+	git commit -m "checkpoint: before action ${LABEL} (${TS})"
+fi
+
+TAG="checkpoint-${TS}"
+git tag "${TAG}"
+
+echo "ai-checkpoint: tag ${TAG} created."
+git rev-parse HEAD
