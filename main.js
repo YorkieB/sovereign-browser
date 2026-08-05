@@ -245,6 +245,34 @@ app.commandLine.appendSwitch('disable-gpu');
 // which Electron does not do on its own.
 let chromeExtensions = null;
 
+// [SovereignBrowser] Window controls for the File menu. HOLLY is a
+// single-window browser (one shared tab manager), so 'New window'
+// surfaces the existing window rather than spawning a rival that would
+// fight over tab state. Close/Exit both shut the app down - with no
+// separate child windows, closing 'the window' IS quitting.
+ipcMain.handle('holly:window:new', () => {
+  const win = mainWindow();
+  if (win) {
+    if (win.isMinimized()) { win.restore(); }
+    win.show();
+    win.focus();
+    return { ok: true, action: 'focused-existing' };
+  }
+  createWindow();
+  return { ok: true, action: 'created' };
+});
+
+ipcMain.handle('holly:window:close', () => {
+  const win = mainWindow();
+  if (win) { win.close(); }
+  return { ok: true };
+});
+
+ipcMain.handle('holly:app:exit', () => {
+  app.quit();
+  return { ok: true };
+});
+
 function mainWindow() {
   return BrowserWindow.getAllWindows()[0] || null;
 }
