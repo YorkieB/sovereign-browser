@@ -33,3 +33,7 @@ Commit: -  Status: success
 ### 2026-08-05T21:44:25+01:00 — 010
 Instruction: Fix scripts/ai-checkpoint so checkpoint purpose is explicit even when no commit is created; require a non-empty label
 Commit: 6053eed05b95effcc9bdb108887402ce4233baeb  Status: success
+
+### 2026-08-05T21:52:53+01:00 — 012
+Instruction: Add verification ladder foundation (Phase 3, smallest piece): lightweight check script in package.json
+Commit: 09bbdae4e2ee060a409cad63014e9e4c5b787d24  Status: success
