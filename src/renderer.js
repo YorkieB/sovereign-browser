@@ -1752,33 +1752,31 @@ async function fetchBraveSuggestions(query) {
 		}); // [NRS-1301]
 
 		// Webview events // [NRS-1301]
+		// [FLICKER-FIX] These three are siblings, registered ONCE per tab. The two
+		// loading listeners were previously nested inside page-title-updated, so
+		// every title update stacked another pair of them.
 		webview.addEventListener("page-title-updated", (e) => {
-			// [NRS-1301]
 			titleEl.textContent = e.title || "Tab"; // [NRS-1301]
 			updateStatusBar(`${e.title || "Tab"}`, { persist: false }); // [NRS-1301]
+		}); // [NRS-1301]
 
-			webview.addEventListener("did-start-loading", () => {
-				// [NRS-1301]
-				if (tab.id === activeTabId) {
-					// [NRS-1301]
-					showLoadingProgress(); // [NRS-1301]
-					webview.classList.add("loading"); // [NRS-1301]
-					updateStatusBar("Loading...", { loading: true, persist: true }); // [NRS-1301]
-				} // [NRS-1301]
-			}); // [NRS-1301]
+		webview.addEventListener("did-start-loading", () => {
+			if (tab.id === activeTabId) {
+				showLoadingProgress(); // [NRS-1301]
+				webview.classList.add("loading"); // [NRS-1301]
+				updateStatusBar("Loading...", { loading: true, persist: true }); // [NRS-1301]
+			} // [NRS-1301]
+		}); // [NRS-1301]
 
-			webview.addEventListener("did-stop-loading", () => {
-				// [NRS-1301]
-				if (tab.id === activeTabId) {
-					// [NRS-1301]
-					hideLoadingProgress(); // [NRS-1301]
-					webview.classList.remove("loading"); // [NRS-1301]
-					const url = webview.getURL?.() || webview.src || ""; // [RESTORED]
-					applyExtensionsToWebview(webview, url); // [NRS-1301]
-					const isSecure = /^https:\/\//i.test(url); // [RESTORED]
-					updateStatusBar("Page loaded", { secure: isSecure }); // [NRS-1301]
-				} // [NRS-1301]
-			}); // [NRS-1301]
+		webview.addEventListener("did-stop-loading", () => {
+			if (tab.id === activeTabId) {
+				hideLoadingProgress(); // [NRS-1301]
+				webview.classList.remove("loading"); // [NRS-1301]
+				const url = webview.getURL?.() || webview.src || ""; // [RESTORED]
+				applyExtensionsToWebview(webview, url); // [NRS-1301]
+				const isSecure = /^https:\/\//i.test(url); // [RESTORED]
+				updateStatusBar("Page loaded", { secure: isSecure }); // [NRS-1301]
+			} // [NRS-1301]
 		}); // [NRS-1301]
 		webview.addEventListener("did-navigate", (e) => {
 			// [NRS-1301]
