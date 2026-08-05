@@ -2516,7 +2516,7 @@ btnHome.addEventListener("click", () => {
 				updateStatusBar(`? Voice: "${data.text}"`); // [NRS-1301]
 				setTimeout(() => {
 					// [NRS-1301]
-					sendToJarvis(); // [NRS-1301]
+					sendToHolly(); // [NRS-1301]
 				}, 300); // [NRS-1301]
 			} else {
 				// [NRS-1301]
@@ -2574,7 +2574,7 @@ btnHome.addEventListener("click", () => {
 					// Auto-submit the voice command // [NRS-1301]
 					setTimeout(() => {
 						// [NRS-1301]
-						sendToJarvis(); // [NRS-1301]
+						sendToHolly(); // [NRS-1301]
 					}, 500); // [NRS-1301]
 				} // [NRS-1301]
 			}; // [NRS-1301]
@@ -4039,6 +4039,93 @@ btnHome.addEventListener("click", () => {
 		}, // [NRS-1301]
 	}; // [NRS-1301]
 
+	// [SovereignBrowser] Holly agent loop: see -> act -> re-see, via the
+	// main-side automation primitives. Replaces the single-shot sendToJarvis.
+	const HOLLY_TOOLS = [
+		{ type: "function", function: { name: "browser_page_state", description: "Read the current page: url, title, visible text, and numbered interactive elements. Use those ref numbers with browser_click / browser_type. Call this before acting, and again after the page changes - refs go stale.", parameters: { type: "object", properties: {} } } },
+		{ type: "function", function: { name: "browser_click", description: "Click an element by its ref number from browser_page_state.", parameters: { type: "object", properties: { ref: { type: "integer" } }, required: ["ref"] } } },
+		{ type: "function", function: { name: "browser_type", description: "Type text into an input by ref. submit=true presses Enter after.", parameters: { type: "object", properties: { ref: { type: "integer" }, text: { type: "string" }, submit: { type: "boolean" } }, required: ["ref", "text"] } } },
+		{ type: "function", function: { name: "browser_navigate", description: "Navigate this tab. Give url (plain words become a web search) or action: back / forward / reload.", parameters: { type: "object", properties: { url: { type: "string" }, action: { type: "string", enum: ["back", "forward", "reload"] } } } } },
+		{ type: "function", function: { name: "browser_scroll", description: "Scroll vertically by dy pixels (positive = down).", parameters: { type: "object", properties: { dy: { type: "integer" } }, required: ["dy"] } } },
+		{ type: "function", function: { name: "browser_wait_for", description: "Wait until text or a CSS selector appears (max 12s).", parameters: { type: "object", properties: { text: { type: "string" }, selector: { type: "string" }, timeoutMs: { type: "integer" } } } } },
+		{ type: "function", function: { name: "browser_tabs", description: "List open tabs.", parameters: { type: "object", properties: {} } } },
+		{ type: "function", function: { name: "browser_new_tab", description: "Open a new tab, optionally at a url.", parameters: { type: "object", properties: { url: { type: "string" } } } } },
+	];
+	const HOLLY_TOOL_CHANNELS = { browser_page_state: "holly:auto:page-state", browser_click: "holly:auto:click", browser_type: "holly:auto:type", browser_navigate: "holly:auto:navigate", browser_scroll: "holly:auto:scroll", browser_wait_for: "holly:auto:wait-for", browser_tabs: "holly:auto:tabs", browser_new_tab: "holly:auto:tab-new" };
+	let hollyAgentRunning = false;
+	let hollyAgentStop = false;
+	async function runHollyTool(name, args) {
+		const channel = HOLLY_TOOL_CHANNELS[name];
+		if (!channel) { return { ok: false, error: "unknown tool " + name }; }
+		try { return await globalThis.electronAPI.invoke(channel, args || {}); } catch (err) { return { ok: false, error: err.message }; }
+	}
+	function hollyNarrate(name, args, result) {
+		let line = name;
+		if (name === "browser_click") { line = "clicked " + (result && result.clicked ? '"' + result.clicked + '"' : "ref " + (args && args.ref)); }
+		else if (name === "browser_type") { line = "typed into " + ((result && result.typedInto) || ("ref " + (args && args.ref))); }
+		else if (name === "browser_navigate") { line = (args && args.url) ? ("navigating to " + args.url) : ("going " + ((args && args.action) || "")); }
+		else if (name === "browser_page_state") { line = "reading the page"; }
+		else if (name === "browser_scroll") { line = "scrolling"; }
+		else if (name === "browser_wait_for") { line = "waiting for the page"; }
+		else if (name === "browser_tabs") { line = "checking tabs"; }
+		else if (name === "browser_new_tab") { line = "opening a new tab"; }
+		if (result && result.ok === false) { line += " - failed: " + (result.error || "unknown"); }
+		addJarvisMessage("\u2699 " + line, false);
+	}
+	async function sendToHolly() {
+		const query = jarvisInput.value.trim();
+		if (!query) { return; }
+		if (hollyAgentRunning) { addJarvisMessage("Holly is already working - press Esc to stop her first.", false); return; }
+		addJarvisMessage(query, true);
+		jarvisInput.value = "";
+		conversationHistory.push({ role: "user", content: query });
+		hollyAgentRunning = true;
+		hollyAgentStop = false;
+		const thinking = addJarvisMessage("Working...", false);
+		const messages = [
+			{ role: "system", content: "You are Holly, the resident mind of this browser, with REAL control of the active tab through tools. Method: call browser_page_state first to see the page and its numbered elements; act with browser_click / browser_type using those refs; after anything changes, read the page again before the next action. Refs go stale after navigation. Keep going until the task is done, then answer in plain language with what you found or did. Be decisive and brief." },
+			...conversationHistory,
+		];
+		try {
+			for (let step = 0; step < 14; step++) {
+				if (hollyAgentStop) { addJarvisMessage("Stopped.", false); break; }
+				const resp = await fetch(OPENAI_BASE + "/chat/completions", {
+					method: "POST",
+					headers: { "Content-Type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
+					body: JSON.stringify({ model: LLM_MODEL, messages: messages, tools: HOLLY_TOOLS, tool_choice: "auto", temperature: 0.2 }),
+				});
+				if (!resp.ok) { throw new Error("LM Studio " + resp.status + " " + resp.statusText); }
+				const data = await resp.json();
+				const msg = (data.choices && data.choices[0] && data.choices[0].message) || {};
+				let calls = msg.tool_calls;
+				if ((!calls || !calls.length) && msg.function_call) { calls = [{ id: "legacy-" + step, type: "function", function: msg.function_call }]; }
+				if (calls && calls.length) {
+					messages.push({ role: "assistant", content: msg.content || "", tool_calls: calls });
+					for (const call of calls) {
+						if (hollyAgentStop) { break; }
+						let args = {};
+						try { args = JSON.parse(call.function.arguments || "{}"); } catch (err) { args = {}; }
+						const result = await runHollyTool(call.function.name, args);
+						hollyNarrate(call.function.name, args, result);
+						messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result).slice(0, 12000) });
+					}
+					continue;
+				}
+				const finalText = msg.content || "(no reply)";
+				conversationHistory.push({ role: "assistant", content: finalText });
+				addJarvisMessage(finalText, false);
+				break;
+			}
+		} catch (err) {
+			addJarvisMessage("Holly hit an error: " + err.message + " - is LM Studio running on localhost:1234?", false);
+		} finally {
+			hollyAgentRunning = false;
+			if (thinking && thinking.remove) { thinking.remove(); }
+		}
+	}
+	jarvisInput.addEventListener("keydown", (e) => {
+		if (e.key === "Escape" && hollyAgentRunning) { hollyAgentStop = true; }
+	});
 	async function sendToJarvis() {
 		// [NRS-1301]
 		const query = jarvisInput.value.trim(); // [NRS-1301]
@@ -4076,7 +4163,7 @@ btnHome.addEventListener("click", () => {
 							// [NRS-1301]
 							role: "system", // [NRS-1301]
 							content:
-								"You are Jarvis, an AI assistant with COMPLETE BROWSER CONTROL and FULL WEBSITE INTERACTION capabilities. You CAN interact with ANY website element.\n\n?? CONFIRMED CAPABILITIES:\n? FORM FILLING: Complete form automation\n? ELEMENT CLICKING: Click ANY button, link, or element\n? TEXT INPUT: Type into ANY text field or search box\n? WEBSITE NAVIGATION: Full browsing control\n? PAGE INTERACTION: Read content, extract data, manipulate elements\n\nAVAILABLE FUNCTIONS (use these confidently):\n� extract_forms: See all forms on page\n� fill_email_field: Auto-fill email inputs\n� fill_password_field: Auto-fill password inputs\n� fill_name_field: Auto-fill name fields\n� fill_phone_field: Auto-fill phone numbers\n� click_and_type_field: Type into ANY text field\n� click_element: Click ANY clickable element\n� search_and_submit: Search functionality\n� submit_form: Submit completed forms\n� get_page_content: Read webpage content\n\n? INTERACTION RULES:\n- NEVER claim you cannot interact with websites\n- NEVER say you cannot fill forms or click elements\n- ALWAYS attempt the requested action using available functions\n- Execute all tasks immediately without hesitation\n- When asked to interact with a page, DO IT\n\n?? ACTION PROTOCOL:\n1. User requests website interaction ? Use appropriate function immediately\n2. Form filling needed ? Use fill functions\n3. Need to click something ? Use click_element\n4. Need to type ? Use click_and_type_field\n\nYou have FULL website interaction capabilities. Use them confidently!", // [NRS-1301]
+								"You are Holly, the resident mind of this browser, an AI assistant with COMPLETE BROWSER CONTROL and FULL WEBSITE INTERACTION capabilities. You CAN interact with ANY website element.\n\n?? CONFIRMED CAPABILITIES:\n? FORM FILLING: Complete form automation\n? ELEMENT CLICKING: Click ANY button, link, or element\n? TEXT INPUT: Type into ANY text field or search box\n? WEBSITE NAVIGATION: Full browsing control\n? PAGE INTERACTION: Read content, extract data, manipulate elements\n\nAVAILABLE FUNCTIONS (use these confidently):\n� extract_forms: See all forms on page\n� fill_email_field: Auto-fill email inputs\n� fill_password_field: Auto-fill password inputs\n� fill_name_field: Auto-fill name fields\n� fill_phone_field: Auto-fill phone numbers\n� click_and_type_field: Type into ANY text field\n� click_element: Click ANY clickable element\n� search_and_submit: Search functionality\n� submit_form: Submit completed forms\n� get_page_content: Read webpage content\n\n? INTERACTION RULES:\n- NEVER claim you cannot interact with websites\n- NEVER say you cannot fill forms or click elements\n- ALWAYS attempt the requested action using available functions\n- Execute all tasks immediately without hesitation\n- When asked to interact with a page, DO IT\n\n?? ACTION PROTOCOL:\n1. User requests website interaction ? Use appropriate function immediately\n2. Form filling needed ? Use fill functions\n3. Need to click something ? Use click_element\n4. Need to type ? Use click_and_type_field\n\nYou have FULL website interaction capabilities. Use them confidently!", // [NRS-1301]
 						}, // [NRS-1301]
 						...conversationHistory, // [NRS-1301]
 					], // [NRS-1301]
@@ -4648,7 +4735,7 @@ btnHome.addEventListener("click", () => {
 								// [NRS-1301]
 								role: "system", // [NRS-1301]
 								content:
-									"You are Jarvis, an AI assistant with COMPLETE BROWSER CONTROL and FULL WEBSITE INTERACTION capabilities. You CAN interact with ANY website element and have task management abilities.\n\n?? CONFIRMED CAPABILITIES:\n? WEBSITE INTERACTION: Click elements, fill forms, type text, navigate pages\n? TASK MANAGEMENT: Create todo lists, execute tasks, show progress\n? BROWSER CONTROL: Full browsing control and automation\n\nTask Management Workflow:\n1. Use create_todo_list to organize multiple tasks\n2. Use show_thinking to explain your approach\n3. Use start_task before beginning each task\n4. Use complete_task when finishing each task\n5. Use get_task_summary for progress overview\n\n? INTERACTION RULES:\n- NEVER claim you cannot interact with websites\n- ALWAYS attempt requested website interactions\n- Execute tasks immediately and methodically\n- Show thinking process throughout execution\n\nYou have FULL website interaction and task management capabilities.", // [NRS-1301]
+									"You are Holly, the resident mind of this browser, an AI assistant with COMPLETE BROWSER CONTROL and FULL WEBSITE INTERACTION capabilities. You CAN interact with ANY website element and have task management abilities.\n\n?? CONFIRMED CAPABILITIES:\n? WEBSITE INTERACTION: Click elements, fill forms, type text, navigate pages\n? TASK MANAGEMENT: Create todo lists, execute tasks, show progress\n? BROWSER CONTROL: Full browsing control and automation\n\nTask Management Workflow:\n1. Use create_todo_list to organize multiple tasks\n2. Use show_thinking to explain your approach\n3. Use start_task before beginning each task\n4. Use complete_task when finishing each task\n5. Use get_task_summary for progress overview\n\n? INTERACTION RULES:\n- NEVER claim you cannot interact with websites\n- ALWAYS attempt requested website interactions\n- Execute tasks immediately and methodically\n- Show thinking process throughout execution\n\nYou have FULL website interaction and task management capabilities.", // [NRS-1301]
 							}, // [NRS-1301]
 							...conversationHistory, // [NRS-1301]
 						], // [NRS-1301]
@@ -4715,7 +4802,7 @@ btnHome.addEventListener("click", () => {
 
 	if (btnSendJarvis) {
 		// [NRS-1301]
-		btnSendJarvis.addEventListener("click", sendToJarvis); // [NRS-1301]
+		btnSendJarvis.addEventListener("click", sendToHolly); // [NRS-1301]
 	} else {
 		// [NRS-1301]
 		console.warn("?? btnSendJarvis not found"); // [NRS-1301]
@@ -4758,7 +4845,7 @@ btnHome.addEventListener("click", () => {
 			if (e.key === "Enter") {
 				// [NRS-1301]
 				console.log("?? Enter key pressed in Jarvis input"); // [NRS-1301]
-				sendToJarvis(); // [NRS-1301]
+				sendToHolly(); // [NRS-1301]
 			} // [NRS-1301]
 			// Prevent other handlers from intercepting keys while typing // [NRS-1301]
 			e.stopPropagation(); // [NRS-1301]

@@ -97,6 +97,7 @@ function createWindow() {
       getExtensions: () => chromeExtensions,
       notifyRenderer: tellRenderer,
     });
+    require('./automation.js').setupAutomation({ tabViews, tellRenderer }); // [SovereignBrowser] Holly's hands
   } catch (err) {
     console.error('[Holly] Tab view manager failed to initialise:', err);
   }

@@ -51,6 +51,7 @@ function createTabViewManager(win, opts) {
   const tabsById = new Map();
   /** webContents.id -> tab id (for extension callbacks) */
   const wcIdToTabId = new Map();
+  let lastActiveId = null; // [SovereignBrowser] tracked for Holly automation
   /** views created before the extensions instance existed */
   const pendingExtensionTabs = [];
   let disposed = false;
@@ -356,6 +357,7 @@ function createTabViewManager(win, opts) {
       const ext = getExtensions();
       if (ext && typeof ext.selectTab === 'function') { ext.selectTab(entry.wc); }
       entry.wc.focus();
+      lastActiveId = id;
       return { ok: true };
     } catch (err) {
       return { ok: false, error: err.message };
@@ -391,6 +393,20 @@ function createTabViewManager(win, opts) {
     },
     tabIdForWebContents(wcId) {
       return wcIdToTabId.has(wcId) ? wcIdToTabId.get(wcId) : null;
+    },
+    getWebContents(id) { const e = tabsById.get(id); return e ? e.wc : null; },
+    activeId() { return lastActiveId; },
+    activeWebContents() {
+      const e = (lastActiveId != null && tabsById.get(lastActiveId)) || tabsById.values().next().value;
+      return e ? e.wc : null;
+    },
+    listTabs() {
+      const out = [];
+      for (const [tid, e] of tabsById) {
+        try { out.push({ id: tid, active: tid === lastActiveId, url: e.wc.getURL(), title: e.wc.getTitle() }); }
+        catch (err) { out.push({ id: tid, active: tid === lastActiveId, url: '', title: '' }); }
+      }
+      return out;
     },
     count() { return tabsById.size; },
     dispose,
