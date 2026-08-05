@@ -5,7 +5,8 @@
 	"main": "main.js",
 	"scripts": {
 		"start": "electron .",
-		"build": "electron-builder --win"
+		"build": "electron-builder --win",
+		"check": "node --check main.js && node --check preload.js && node --check src/renderer.js && echo CHECK-PASSED"
 	},
 	"author": "",
 	"license": "GPL-3.0",
