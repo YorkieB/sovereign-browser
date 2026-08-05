@@ -641,6 +641,33 @@ function ensureExtensionsInstance() {
       return mainWindow();
     },
   });
+  // [SovereignBrowser] Popup lifecycle. The library's own blur handler
+  // refuses to close while it thinks focus left the app - which on Windows
+  // is exactly what a click on the parent window looks like mid-transition,
+  // so popups never folded. Close on blur unconditionally (DevTools
+  // excepted), and treat a re-click on the action as toggle-off by
+  // swallowing the popup the library re-creates right after one closed.
+  let lastPopupClosedAt = 0;
+  chromeExtensions.on('browser-action-popup-created', (popup) => {
+    try {
+      if (Date.now() - lastPopupClosedAt < 300) {
+        popup.destroy();
+        return;
+      }
+      const bw = popup.browserWindow;
+      if (!bw || bw.isDestroyed()) { return; }
+      bw.on('blur', () => {
+        try {
+          if (!bw.isDestroyed() && bw.webContents.isDevToolsOpened()) { return; }
+          lastPopupClosedAt = Date.now();
+          popup.destroy();
+        } catch (err) { /* popup already gone */ }
+      });
+      bw.on('closed', () => { lastPopupClosedAt = Date.now(); });
+    } catch (err) {
+      console.warn('[Holly] popup lifecycle hook failed:', err.message);
+    }
+  });
 }
 
 async function setupChromeExtensions() {
