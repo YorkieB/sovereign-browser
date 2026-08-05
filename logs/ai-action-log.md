@@ -53,3 +53,7 @@ Commit: 54dbf6ff0c9b42f1470a823d90cdf4e9d5e20f97  Status: success
 ### 2026-08-05T23:07:35+01:00 — 020
 Instruction: Add scripts/ai-revert as a read-only revert inspector - Phase 4 foundation, no mutating capability yet
 Commit: 09f16b45aff3e314d4d0bbb2ec6ea81ff15379ab  Status: success
+
+### 2026-08-05T23:14:02+01:00 — 022
+Instruction: Extend scripts/ai-revert from read-only inspection to dry-run revert planning only - still no actual git revert/reset/stash/commit capability
+Commit: c51fe04c1af755254ad4ade041e7e92c5b523bb3  Status: success
