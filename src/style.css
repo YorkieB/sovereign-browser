@@ -2328,3 +2328,10 @@ textarea:focus {
 
 /* [SovereignBrowser] context menu disabled items */
 .context-option.disabled { opacity: 0.4; pointer-events: none; }
+
+/* [SovereignBrowser] Split view: #content is a flex COLUMN, so two 50%-wide
+   panes stacked down the left half. Side-by-side needs a row container.
+   Scoped to split mode only; normal single-pane layout is untouched. */
+#content.split-view {
+	flex-direction: row;
+}
