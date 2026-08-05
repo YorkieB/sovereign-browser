@@ -2028,10 +2028,49 @@ webview.src = url; // [NRS-1301]
 	if (USE_WCV) {
 		document.body.classList.add("native-menus");
 		const ovfExt = document.getElementById("btn-ovf-extensions");
-		if (ovfExt) { ovfExt.addEventListener("click", () => { const b = document.getElementById("btn-extensions-bar"); if (b) { b.click(); } }); }
+		if (ovfExt) { ovfExt.addEventListener("click", () => { openExtensions(); }); }
+		const puzzleBtn = document.getElementById("btn-extensions-bar");
+		if (puzzleBtn) {
+			puzzleBtn.addEventListener("click", async (e) => {
+				e.preventDefault();
+				e.stopImmediatePropagation();
+				let exts = [];
+				try {
+					exts = await globalThis.electronAPI.invoke("holly:extensions:manage-list");
+				} catch (err) {
+					console.warn("[menus] puzzle list failed:", err.message);
+				}
+				const items = [];
+				__nativeMenuTargets = [];
+				const rect = puzzleBtn.getBoundingClientRect();
+				for (const px of (exts || [])) {
+					if (!px.enabled) { continue; }
+					items.push({ i: __nativeMenuTargets.length, label: px.name || px.id, icon: px.iconUrl || undefined });
+					__nativeMenuTargets.push(((pid) => () => {
+						try {
+							if (typeof browserAction !== "undefined" && browserAction && typeof browserAction.activate === "function") {
+								browserAction.activate("persist:holly", { eventType: "click", extensionId: pid, anchorRect: { x: rect.left, y: rect.top, width: rect.width, height: rect.height } });
+							} else {
+								openExtensions();
+							}
+						} catch (err) {
+							console.warn("[menus] activate failed:", err.message);
+						}
+					})(px.id));
+				}
+				if (items.length) { items.push({ sep: true }); }
+				items.push({ i: __nativeMenuTargets.length, label: "Manage extensions" });
+				__nativeMenuTargets.push(() => openExtensions());
+				items.push({ i: __nativeMenuTargets.length, label: "Get extensions from Chrome Web Store" });
+				__nativeMenuTargets.push(() => { try { createTab("https://chromewebstore.google.com/"); } catch (err) { console.warn("[menus] open store failed:", err.message); } });
+				globalThis.electronAPI.invoke("holly:popup-menu", { items: items, x: Math.round(rect.left), y: Math.round(rect.bottom) }).catch((err) => {
+					console.warn("[menus] puzzle menu failed:", err && err.message);
+				});
+			}, true);
+		}
 		globalThis.electronAPI.on("holly:menu-action", (payload) => {
 			const el = __nativeMenuTargets[payload && payload.i];
-			if (el) { el.click(); }
+			if (typeof el === "function") { el(); } else if (el) { el.click(); }
 		});
 		const ovfBtn = document.getElementById("btn-overflow");
 		const ovfMenu = document.getElementById("overflow-menu");
@@ -5017,6 +5056,273 @@ omnibox.addEventListener("input", (e) => {
 	// [SovereignBrowser] Real extension management. Electron has no
 	// disabled-but-installed state, so main derives "installed" from disk and
 	// "enabled" from what is loaded, persisting the disabled set itself.
+	// [SovereignBrowser] Full Edge-style detail page: breadcrumb, header card,
+	// description, permissions, site access, a REAL Allow-in-InPrivate toggle
+	// (loads the extension into the incognito session), source/ID/inspect,
+	// store link, remove.
+	async function showExtensionDetailById(extId) {
+		let list = [];
+		try { list = await globalThis.electronAPI.invoke("holly:extensions:manage-list"); } catch (err) { showError("Could not load details: " + err.message); return; }
+		const ext = (list || []).find((x) => x.id === extId);
+		if (!ext) { showError("Extension not found: " + extId); return; }
+		const old = document.getElementById("ext-detail-page");
+		if (old) { old.remove(); }
+		const page = document.createElement("div");
+		page.id = "ext-detail-page";
+		const leave = () => { page.remove(); extensionsList.classList.remove("detail-open"); };
+		const crumb = document.createElement("div");
+		crumb.className = "ext-crumb";
+		const back = document.createElement("button");
+		back.className = "ext-back";
+		back.textContent = "\u2039";
+		back.title = "Back to installed extensions";
+		back.addEventListener("click", leave);
+		const crumbText = document.createElement("span");
+		crumbText.textContent = "Installed extensions / ";
+		const crumbName = document.createElement("strong");
+		crumbName.textContent = ext.name || ext.id;
+		crumb.appendChild(back); crumb.appendChild(crumbText); crumb.appendChild(crumbName);
+		const card = document.createElement("div");
+		card.className = "ext-detail-card";
+		const head = document.createElement("div");
+		head.className = "ext-card-top";
+		const icon = document.createElement("img");
+		icon.className = "ext-icon ext-icon-lg";
+		if (ext.iconUrl) { icon.src = ext.iconUrl; }
+		const main = document.createElement("div");
+		main.className = "ext-main";
+		const nm = document.createElement("div");
+		nm.className = "ext-name";
+		nm.textContent = ext.name || ext.id;
+		const meta = document.createElement("div");
+		meta.className = "ext-ver";
+		const mb = ext.sizeBytes ? (ext.sizeBytes / 1048576) : 0;
+		meta.textContent = "Size " + (mb < 1 ? "< 1 MB" : mb.toFixed(1) + " MB") + "   Version " + (ext.version || "?");
+		main.appendChild(nm); main.appendChild(meta);
+		const pill = document.createElement("input");
+		pill.type = "checkbox"; pill.className = "ext-pill"; pill.checked = !!ext.enabled;
+		pill.addEventListener("change", async () => {
+			pill.disabled = true;
+			try {
+				const res = await globalThis.electronAPI.invoke("holly:extensions:set-enabled", ext.id, pill.checked);
+				if (!res || !res.ok) { pill.checked = !pill.checked; showError("Could not change: " + ((res && res.error) || "unknown error")); }
+			} catch (err) { pill.checked = !pill.checked; showError("Could not change: " + err.message); }
+			pill.disabled = false;
+		});
+		head.appendChild(icon); head.appendChild(main); head.appendChild(pill);
+		card.appendChild(head);
+		const section = (t) => { const sd = document.createElement("div"); sd.className = "ext-sec"; const hh = document.createElement("div"); hh.className = "ext-sec-h"; hh.textContent = t; sd.appendChild(hh); return sd; };
+		if (ext.description) { const sd = section("Description"); const p = document.createElement("div"); p.className = "ext-sec-p"; p.textContent = ext.description; sd.appendChild(p); card.appendChild(sd); }
+		if (ext.permissions && ext.permissions.length) {
+			const sd = section("Permissions");
+			const ul = document.createElement("ul"); ul.className = "ext-ul";
+			for (const perm of ext.permissions) { const li = document.createElement("li"); li.textContent = perm; ul.appendChild(li); }
+			sd.appendChild(ul); card.appendChild(sd);
+		}
+		const sa = section("Site access");
+		const sap = document.createElement("div"); sap.className = "ext-sec-p";
+		const hosts = ext.hostPermissions || [];
+		sap.textContent = hosts.some((hx) => hx === "<all_urls>" || hx === "*://*/*") ? "On all sites" : (hosts.length ? hosts.join(", ") : "None requested");
+		sa.appendChild(sap); card.appendChild(sa);
+		const ip = section("Allow in InPrivate");
+		const iprow = document.createElement("div"); iprow.className = "ext-iprow";
+		const ipd = document.createElement("div"); ipd.className = "ext-sec-p";
+		ipd.textContent = "Loads this extension in incognito tabs. Incognito browsing itself stays separate from your normal session.";
+		const ipill = document.createElement("input");
+		ipill.type = "checkbox"; ipill.className = "ext-pill"; ipill.checked = !!ext.allowIncognito;
+		ipill.addEventListener("change", async () => {
+			ipill.disabled = true;
+			try {
+				const res = await globalThis.electronAPI.invoke("holly:extensions:set-incognito", ext.id, ipill.checked);
+				if (!res || !res.ok) { ipill.checked = !ipill.checked; showError("Could not change: " + ((res && res.error) || "unknown error")); }
+				else { showSuccess((ipill.checked ? "Enabled" : "Disabled") + " in incognito"); }
+			} catch (err) { ipill.checked = !ipill.checked; showError("Could not change: " + err.message); }
+			ipill.disabled = false;
+		});
+		iprow.appendChild(ipd); iprow.appendChild(ipill);
+		ip.appendChild(iprow); card.appendChild(ip);
+		const facts = document.createElement("div"); facts.className = "ext-facts";
+		const mk = (k, v) => { const dd = document.createElement("div"); const bb = document.createElement("strong"); bb.textContent = k + " "; dd.appendChild(bb); dd.appendChild(document.createTextNode(v)); return dd; };
+		facts.appendChild(mk("Source", ext.source || "Chrome Web Store"));
+		facts.appendChild(mk("ID", ext.id));
+		if (ext.hasWorker) {
+			const dd = document.createElement("div");
+			const bb = document.createElement("strong"); bb.textContent = "Inspect views ";
+			const aa = document.createElement("a"); aa.href = "#"; aa.textContent = "service worker"; aa.className = "ext-link";
+			aa.addEventListener("click", async (ev) => {
+				ev.preventDefault();
+				try {
+					const res = await globalThis.electronAPI.invoke("holly:extensions:inspect-worker", ext.id);
+					if (!res || !res.ok) { showError((res && res.error) || "Could not open service worker DevTools"); }
+				} catch (err) { showError("Could not open DevTools: " + err.message); }
+			});
+			dd.appendChild(bb); dd.appendChild(aa); facts.appendChild(dd);
+		}
+		card.appendChild(facts);
+		const store = document.createElement("a");
+		store.href = "#"; store.className = "ext-link ext-storelink";
+		store.textContent = "View in Chrome Web Store \u2197";
+		store.addEventListener("click", (ev) => {
+			ev.preventDefault();
+			try { createTab("https://chromewebstore.google.com/detail/" + ext.id); closeExtensions(); leave(); } catch (err) { showError("Could not open store: " + err.message); }
+		});
+		card.appendChild(store);
+		const rm = document.createElement("button");
+		rm.className = "ext-remove"; rm.textContent = "Remove";
+		rm.addEventListener("click", async () => {
+			rm.disabled = true;
+			try {
+				const res = await globalThis.electronAPI.invoke("holly:extensions:uninstall", ext.id);
+				if (res && res.ok !== false) { showSuccess("Removed " + (ext.name || ext.id)); leave(); renderChromeExtensionsEdge(); }
+				else { showError("Could not remove: " + ((res && res.error) || "unknown error")); rm.disabled = false; }
+			} catch (err) { showError("Could not remove: " + err.message); rm.disabled = false; }
+		});
+		card.appendChild(rm);
+		page.appendChild(crumb);
+		page.appendChild(card);
+		extensionsList.appendChild(page);
+		extensionsList.classList.add("detail-open");
+	}
+	// [SovereignBrowser] Edge-style extension cards: icon, name+version,
+	// description, ID line, service-worker note, pill toggle, Details/Remove,
+	// live search. Replaces renderChromeExtensions (kept below, unused).
+	async function renderChromeExtensionsEdge() {
+		if (!extensionsList) { return; }
+		let list = [];
+		try {
+			list = await globalThis.electronAPI.invoke("holly:extensions:manage-list");
+		} catch (err) {
+			console.warn("[extensions] could not list:", err.message);
+			return;
+		}
+		const old = document.getElementById("cws-section");
+		if (old) { old.remove(); }
+		const wrap = document.createElement("div");
+		wrap.id = "cws-section";
+		const title = document.createElement("div");
+		title.className = "ext-section-title";
+		title.textContent = "From Chrome Web Store";
+		wrap.appendChild(title);
+		if (!Array.isArray(list) || !list.length) {
+			const none = document.createElement("p");
+			none.textContent = "None installed. Visit the Chrome Web Store to add one.";
+			none.style.cssText = "color:#666;padding:8px";
+			wrap.appendChild(none);
+		}
+		(list || []).forEach((ext) => {
+			const card = document.createElement("div");
+			card.className = "ext-card";
+			card.dataset.search = ((ext.name || "") + " " + (ext.id || "")).toLowerCase();
+			const top = document.createElement("div");
+			top.className = "ext-card-top";
+			const icon = document.createElement("img");
+			icon.className = "ext-icon";
+			if (ext.iconUrl) { icon.src = ext.iconUrl; }
+			icon.addEventListener("error", () => {
+				const fb = document.createElement("span");
+				fb.className = "ext-icon";
+				fb.textContent = "\uD83E\uDDE9";
+				fb.style.cssText = "display:flex;align-items:center;justify-content:center;font-size:22px";
+				icon.replaceWith(fb);
+			});
+			const main = document.createElement("div");
+			main.className = "ext-main";
+			const nameEl = document.createElement("div");
+			nameEl.className = "ext-name";
+			nameEl.textContent = ext.name || ext.id;
+			const ver = document.createElement("span");
+			ver.className = "ext-ver";
+			ver.textContent = ext.version || "";
+			nameEl.appendChild(ver);
+			const desc = document.createElement("div");
+			desc.className = "ext-desc";
+			desc.textContent = ext.description || "";
+			const idEl = document.createElement("div");
+			idEl.className = "ext-id";
+			idEl.textContent = "ID: " + ext.id;
+			main.appendChild(nameEl);
+			if (ext.description) { main.appendChild(desc); }
+			main.appendChild(idEl);
+			if (ext.hasWorker) {
+				const views = document.createElement("div");
+				views.className = "ext-views";
+				views.textContent = "Inspect views: service worker";
+				main.appendChild(views);
+			}
+			const pill = document.createElement("input");
+			pill.type = "checkbox";
+			pill.className = "ext-pill";
+			pill.checked = !!ext.enabled;
+			pill.title = ext.enabled ? "Enabled" : "Disabled";
+			pill.addEventListener("change", async () => {
+				pill.disabled = true;
+				try {
+					const res = await globalThis.electronAPI.invoke("holly:extensions:set-enabled", ext.id, pill.checked);
+					if (!res || !res.ok) {
+						pill.checked = !pill.checked;
+						showError("Could not change: " + ((res && res.error) || "unknown error"));
+					} else {
+						showSuccess((pill.checked ? "Enabled " : "Disabled ") + (ext.name || ext.id));
+					}
+				} catch (err) {
+					pill.checked = !pill.checked;
+					showError("Could not change: " + err.message);
+				}
+				pill.disabled = false;
+			});
+			top.appendChild(icon);
+			top.appendChild(main);
+			top.appendChild(pill);
+			const details = document.createElement("div");
+			details.className = "ext-details";
+			const dLines = [];
+			dLines.push("Manifest V" + (ext.manifestVersion || "?"));
+			if (ext.path) { dLines.push("Path: " + ext.path); }
+			if (ext.permissions && ext.permissions.length) { dLines.push("Permissions: " + ext.permissions.join(", ")); }
+			if (ext.hostPermissions && ext.hostPermissions.length) { dLines.push("Host access: " + ext.hostPermissions.join(", ")); }
+			for (const dl of dLines) { const li = document.createElement("div"); li.textContent = dl; details.appendChild(li); }
+			const btnrow = document.createElement("div");
+			btnrow.className = "ext-btnrow";
+			const btnDetails = document.createElement("button");
+			btnDetails.textContent = "Details";
+			btnDetails.addEventListener("click", () => { showExtensionDetailById(ext.id); });
+			const btnRemove = document.createElement("button");
+			btnRemove.textContent = "Remove";
+			btnRemove.addEventListener("click", async () => {
+				btnRemove.disabled = true;
+				try {
+					const res = await globalThis.electronAPI.invoke("holly:extensions:uninstall", ext.id);
+					if (res && res.ok !== false) {
+						showSuccess("Removed " + (ext.name || ext.id));
+						renderChromeExtensionsEdge();
+					} else {
+						showError("Could not remove: " + ((res && res.error) || "unknown error"));
+						btnRemove.disabled = false;
+					}
+				} catch (err) {
+					showError("Could not remove: " + err.message);
+					btnRemove.disabled = false;
+				}
+			});
+			btnrow.appendChild(btnDetails);
+			btnrow.appendChild(btnRemove);
+			card.appendChild(top);
+			card.appendChild(btnrow);
+			card.appendChild(details);
+			wrap.appendChild(card);
+		});
+		extensionsList.appendChild(wrap);
+		const search = document.getElementById("ext-search");
+		if (search && !search.dataset.wired) {
+			search.dataset.wired = "1";
+			search.addEventListener("input", () => {
+				const q = search.value.trim().toLowerCase();
+				document.querySelectorAll("#cws-section .ext-card").forEach((c) => {
+					c.style.display = !q || (c.dataset.search || "").includes(q) ? "" : "none";
+				});
+			});
+		}
+	}
 	async function renderChromeExtensions() {
 		if (!extensionsList) { return; }
 		let list = [];
@@ -5147,7 +5453,7 @@ omnibox.addEventListener("input", (e) => {
 		// [NRS-1301]
 		if (!extensionsList) return; // [NRS-1301]
 		extensionsList.innerHTML = ""; // [NRS-1301]
-		renderChromeExtensions(); // [SovereignBrowser] real Chrome extensions first
+		renderChromeExtensionsEdge(); // [SovereignBrowser] real Chrome extensions first
 		if (!extensions.length) {
 			// [NRS-1301]
 			const p = document.createElement("p"); // [NRS-1301]

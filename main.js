@@ -255,14 +255,19 @@ function mainWindow() {
 // strip. Native menus float above everything, so no inset is needed.
 ipcMain.handle('holly:popup-menu', (event, payload) => {
   try {
-    const { Menu } = require('electron');
+    const { Menu, nativeImage } = require('electron');
     const win = mainWindow();
     if (!win || !payload || !Array.isArray(payload.items)) { return { ok: false, error: 'bad payload' }; }
     const template = payload.items.map((it) => {
       if (it && it.sep) { return { type: 'separator' }; }
+      let img;
+      if (it.icon) { try { img = nativeImage.createFromDataURL(it.icon).resize({ width: 16, height: 16 }); } catch (err) { img = void 0; } }
       return {
         label: String(it.label || ''),
         enabled: it.enabled !== false,
+        type: it.type === 'checkbox' ? 'checkbox' : 'normal',
+        checked: !!it.checked,
+        icon: img,
         click: () => tellRenderer('holly:menu-action', { i: it.i }),
       };
     });
@@ -325,7 +330,7 @@ ipcMain.handle('holly:extensions:remove', (event, id) => {
 const EXTENSIONS_DIR = () => path.join(app.getPath('userData'), 'Extensions');
 
 function extensionsState() {
-  return readJson('extensions-state.json', { disabled: [] });
+  return readJson('extensions-state.json', { disabled: [], incognito: [] });
 }
 
 function setExtensionDisabled(id, disabled) {
@@ -369,6 +374,7 @@ function sessionExtensions() {
 function listInstalledExtensions() {
   const loaded = new Map(sessionExtensions().getAllExtensions().map((e) => [e.id, e]));
   const disabled = new Set(extensionsState().disabled || []);
+  const incognitoSet = new Set(extensionsState().incognito || []);
   const dir = EXTENSIONS_DIR();
   const results = [];
 
@@ -388,14 +394,50 @@ function listInstalledExtensions() {
     const manifest = extPath ? readManifest(extPath) : null;
     const live = loaded.get(id);
     if (!manifest && !live) { continue; }
+    const iconRel = (() => {
+      const icons = (manifest && manifest.icons) || {};
+      const sizes = Object.keys(icons).map(Number).filter(Number.isFinite).sort((a, b) => b - a);
+      return sizes.length ? String(icons[sizes[0]]).replace(/^\//, '') : null;
+    })();
+    const iconUrl = (() => {
+      if (!iconRel || !extPath) { return null; }
+      try {
+        const ip = path.join(extPath, iconRel);
+        const ie = path.extname(ip).toLowerCase();
+        const mime = ie === '.svg' ? 'image/svg+xml' : (ie === '.jpg' || ie === '.jpeg') ? 'image/jpeg' : 'image/png';
+        return 'data:' + mime + ';base64,' + fs.readFileSync(ip).toString('base64');
+      } catch (err) { return null; }
+    })();
+    const hasWorker = !!(manifest && manifest.background && manifest.background.service_worker);
+    let sizeBytes = 0;
+    try {
+      if (extPath) {
+        const walk = (p) => { for (const en of fs.readdirSync(p, { withFileTypes: true })) { const fp = path.join(p, en.name); if (en.isDirectory()) { walk(fp); } else { try { sizeBytes += fs.statSync(fp).size; } catch (err) {} } } };
+        walk(extPath);
+      }
+    } catch (err) { /* size stays 0 */ }
+    const i18n = (val) => {
+      const mm = typeof val === 'string' && val.match(/^__MSG_(.+)__$/);
+      if (!mm || !extPath) { return val; }
+      try {
+        const loc = (manifest && manifest.default_locale) || 'en';
+        const msgs = JSON.parse(fs.readFileSync(path.join(extPath, '_locales', loc, 'messages.json'), 'utf8'));
+        const key = Object.keys(msgs).find((k) => k.toLowerCase() === mm[1].toLowerCase());
+        return (key && msgs[key] && msgs[key].message) || val;
+      } catch (err) { return val; }
+    };
     results.push({
       id,
-      name: (live && live.name) || (manifest && manifest.name) || id,
+      name: i18n((live && live.name) || (manifest && manifest.name) || id),
       version: (live && live.version) || (manifest && manifest.version) || '',
-      description: (manifest && manifest.description) || '',
+      description: i18n((manifest && manifest.description) || ''),
       permissions: (manifest && manifest.permissions) || [],
       hostPermissions: (manifest && (manifest.host_permissions || [])) || [],
       manifestVersion: (manifest && manifest.manifest_version) || null,
+      iconUrl: iconUrl,
+      hasWorker: hasWorker,
+      sizeBytes: sizeBytes,
+      allowIncognito: incognitoSet.has(id),
       path: extPath || (live && live.path) || '',
       enabled: !!live && !disabled.has(id),
       source: 'Chrome Web Store',
@@ -403,6 +445,40 @@ function listInstalledExtensions() {
   }
   return results;
 }
+
+ipcMain.handle('holly:extensions:inspect-worker', async (event, id) => {
+  try {
+    const sw = await browsingSession().serviceWorkers.startWorkerForScope('chrome-extension://' + id);
+    if (sw && typeof sw.openDevTools === 'function') { sw.openDevTools(); return { ok: true }; }
+    return { ok: false, error: 'Service worker DevTools not supported by this Electron build' };
+  } catch (err) { return { ok: false, error: err.message }; }
+});
+
+ipcMain.handle('holly:extensions:set-incognito', async (event, id, allow) => {
+  try {
+    const state = extensionsState();
+    const set = new Set(state.incognito || []);
+    const incog = session.fromPartition('holly-incognito');
+    const incogExts = incog.extensions || incog;
+    const extPath = findExtensionPath(id);
+    if (allow) {
+      if (!extPath) { return { ok: false, error: 'extension not found on disk' }; }
+      const already = incogExts.getExtension && incogExts.getExtension(id);
+      const loaded = already || await incog.loadExtension(extPath);
+      const manifest = readManifest(extPath);
+      if (manifest && manifest.manifest_version === 3 && manifest.background && manifest.background.service_worker) {
+        try { await incog.serviceWorkers.startWorkerForScope('chrome-extension://' + loaded.id); } catch (err) { console.warn('[Holly] incognito worker start failed:', err.message); }
+      }
+      set.add(id);
+    } else {
+      try { incogExts.removeExtension(id); } catch (err) { /* not loaded */ }
+      set.delete(id);
+    }
+    state.incognito = Array.from(set);
+    writeJson('extensions-state.json', state);
+    return { ok: true, allow: !!allow };
+  } catch (err) { return { ok: false, error: err.message }; }
+});
 
 ipcMain.handle('holly:extensions:manage-list', () => {
   try {
@@ -748,6 +824,26 @@ async function setupChromeExtensions() {
     }
   }
 
+  // Re-apply "Allow in InPrivate": the incognito session is in-memory,
+  // so allowed extensions must be loaded into it on every launch.
+  try {
+    const incogIds = extensionsState().incognito || [];
+    if (incogIds.length) {
+      const incog = session.fromPartition('holly-incognito');
+      for (const iid of incogIds) {
+        const ip = findExtensionPath(iid);
+        if (!ip) { continue; }
+        try {
+          const li = await incog.loadExtension(ip);
+          const mf = readManifest(ip);
+          if (mf && mf.manifest_version === 3 && mf.background && mf.background.service_worker) {
+            try { await incog.serviceWorkers.startWorkerForScope('chrome-extension://' + li.id); } catch (err) { console.warn('[Holly] incognito worker:', err.message); }
+          }
+          console.log('[Holly] Incognito extension loaded:', li.name);
+        } catch (err) { console.warn('[Holly] incognito load failed for', iid, '-', err.message); }
+      }
+    }
+  } catch (err) { console.warn('[Holly] incognito re-apply failed:', err.message); }
   console.log('[Holly] Chrome extension support ready. Loaded:', all.length);
   all.forEach((e) => console.log('   -', e.name, e.version, e.id));
 }
@@ -792,7 +888,3 @@ async function setupChromeExtensions() {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
-
-
-
-

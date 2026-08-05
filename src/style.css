@@ -2361,3 +2361,50 @@ body.native-menus #overflow-menu {
 	display: flex;
 	align-items: center;
 }
+
+/* [SovereignBrowser] Edge-style extensions manager */
+.ext-toolbar { margin: 4px 0 10px; }
+#ext-search { width: 100%; padding: 8px 12px; border: 1px solid #d0d0d4; border-radius: 8px; font-size: 13px; box-sizing: border-box; }
+.ext-devrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.ext-devlabel { font-weight: 600; font-size: 13px; margin-right: 4px; }
+.ext-section-title { font-size: 13px; font-weight: 600; color: #444; margin: 10px 0 8px; }
+.ext-card { display: flex; flex-direction: column; gap: 8px; border: 1px solid #e3e3e6; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.ext-card-top { display: flex; align-items: flex-start; gap: 12px; }
+.ext-icon { width: 32px; height: 32px; border-radius: 6px; flex: none; }
+.ext-main { flex: 1 1 auto; min-width: 0; }
+.ext-name { font-weight: 600; font-size: 14px; }
+.ext-ver { font-weight: 400; color: #777; font-size: 12px; margin-left: 6px; }
+.ext-desc { font-size: 12.5px; color: #555; margin-top: 2px; }
+.ext-id { font-size: 11.5px; color: #888; font-family: Consolas, monospace; margin-top: 4px; }
+.ext-views { font-size: 11.5px; color: #666; margin-top: 2px; }
+.ext-pill { appearance: none; width: 40px; height: 20px; border-radius: 999px; background: #c8c8cc; position: relative; cursor: pointer; transition: background .15s; flex: none; }
+.ext-pill:checked { background: #1a7f37; }
+.ext-pill::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.ext-pill:checked::after { transform: translateX(20px); }
+.ext-btnrow { display: flex; gap: 8px; }
+.ext-btnrow button { font-size: 12.5px; padding: 5px 12px; border: 1px solid #d0d0d4; background: #fff; border-radius: 6px; cursor: pointer; }
+.ext-btnrow button:hover { background: #f4f4f5; }
+.ext-details { display: none; font-size: 12px; color: #555; background: #fafafa; border-radius: 8px; padding: 10px; }
+.ext-details.open { display: block; }
+
+.ext-details div { margin: 2px 0; word-break: break-all; }
+
+/* [SovereignBrowser] Extension detail page (Edge-style) */
+.extensions-list.detail-open > :not(#ext-detail-page) { display: none; }
+.ext-crumb { display: flex; align-items: center; gap: 8px; font-size: 15px; margin: 2px 0 12px; }
+.ext-crumb strong { font-weight: 700; }
+.ext-back { border: none; background: transparent; font-size: 20px; cursor: pointer; padding: 2px 8px; border-radius: 6px; }
+.ext-back:hover { background: #ececee; }
+.ext-detail-card { border: 1px solid #e3e3e6; border-radius: 12px; padding: 18px 20px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.05); display: flex; flex-direction: column; gap: 14px; }
+.ext-icon-lg { width: 40px; height: 40px; }
+.ext-sec-h { font-weight: 600; font-size: 13.5px; margin-bottom: 4px; }
+.ext-sec-p { font-size: 12.5px; color: #555; }
+.ext-ul { margin: 4px 0 0 18px; padding: 0; font-size: 12.5px; color: #555; }
+.ext-iprow { display: flex; align-items: center; gap: 12px; }
+.ext-iprow .ext-sec-p { flex: 1; }
+.ext-facts { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.ext-link { color: #0b57d0; text-decoration: none; cursor: pointer; }
+.ext-link:hover { text-decoration: underline; }
+.ext-storelink { font-size: 13px; }
+.ext-remove { align-self: flex-start; font-size: 12.5px; padding: 6px 14px; border: 1px solid #d0d0d4; background: #fff; border-radius: 6px; cursor: pointer; }
+.ext-remove:hover { background: #f4f4f5; }
