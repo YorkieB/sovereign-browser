@@ -21,3 +21,7 @@ Commit: ba26f16137785cd8bcb36ce34db14ae6ff7dcc9f  Status: success
 ### 2026-08-05T21:17:59+01:00 — 004
 Instruction: create append-only AI action log foundation
 Commit: 9a4c6acfd729684371bd6bd00c22251b77a79bf6  Status: success
+
+### 2026-08-05T21:27:54+01:00 — 006
+Instruction: add checkpoint script and commit discipline docs
+Commit: 26e3d8eca95cd9a1cde1f1fd048137f9b393d6f5  Status: success
