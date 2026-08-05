@@ -17,6 +17,15 @@ const { createTabViewManager } = require('./tab-view-manager'); // [SovereignBro
 let tabViews = null; // [SovereignBrowser] set in createWindow
 require('dotenv').config(); // [NRS-1601] Load environment variables
 
+// [Tier2-Smoke] --smoke-test launches the app and exits with a clear
+// PASS/FAIL line instead of staying open, so a caller that can't trust
+// process exit codes can still tell success from failure by grepping output.
+const SMOKE = process.argv.includes('--smoke-test');
+function smokeFail(reason) {
+  console.error('[smoke] FAIL:', reason);
+  app.exit(1);
+}
+
 // Set OpenAI API key if not already in environment // [NRS-1001]
 if (!process.env.OPENAI_API_KEY) {
   // [NRS-1001]
@@ -898,6 +907,22 @@ async function setupChromeExtensions() {
     if (!mainWin) {
       throw new Error('createWindow() ran but no BrowserWindow was registered.');
     }
+
+    if (SMOKE) {
+      const wc = mainWin.webContents;
+      wc.on('did-fail-load', (event, errorCode, errorDescription) => {
+        smokeFail(`did-fail-load ${errorCode} ${errorDescription}`);
+      });
+      wc.on('render-process-gone', (event, details) => {
+        smokeFail(`render-process-gone ${details.reason}`);
+      });
+      wc.on('did-finish-load', () => {
+        console.log('[smoke] PASS: window loaded cleanly');
+        app.exit(0);
+      });
+      setTimeout(() => smokeFail('timeout: window never finished loading'), 20000);
+    }
+
     new BrowserAutomationManager(mainWin);
 
     setupChromeExtensions().catch((err) => {
@@ -905,6 +930,10 @@ async function setupChromeExtensions() {
     });
   } catch (err) {
     console.error('[Holly] Startup failed:', err);
+    if (SMOKE) {
+      smokeFail('startup threw: ' + (err && err.message ? err.message : String(err)));
+      return;
+    }
     try {
       dialog.showErrorBox('HOLLY failed to start', String(err && err.stack ? err.stack : err));
     } catch (dialogErr) {
