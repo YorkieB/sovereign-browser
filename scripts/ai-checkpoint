@@ -1,35 +1,46 @@
 #!/usr/bin/env bash
-# ai-checkpoint — tag the current state as a known-good restore point.
+# ai-checkpoint — tag the current state as the safe point *before* an upcoming action.
 #
 # Usage (Git Bash on Windows):
-#   bash scripts/ai-checkpoint "label for what's about to happen"
+#   bash scripts/ai-checkpoint "label naming the action this is a safe point before"
+#
+# A label is required. checkpoint-* tags are prospective by design: they mark
+# "the state right before action X begins", not "a good moment that happened
+# to occur". Running this with no label — or reusing it after the fact to
+# describe something that already finished — produces a tag with no real
+# meaning attached, which is exactly what this version exists to prevent.
 #
 # Behaviour:
+#   - Refuses to run without a non-empty label: prints usage to stderr and
+#     exits 1 before touching git at all. No tag is created in that case.
 #   - Stages everything (git add -A). backups/ and .env are gitignored,
 #     so this never picks them up regardless of what's sitting in the tree.
 #   - If there ARE staged changes: commits them as
 #     "checkpoint: before action <label> (<timestamp>)".
 #   - If there are NO staged changes (working tree already matches HEAD):
-#     does NOT fabricate an empty commit. Prints that explicitly, then tags
-#     the current HEAD as-is. This is intentional and documented here: a
-#     checkpoint tag always exists after running this script, but a new
-#     commit is only created when there's actually something to checkpoint.
-#   - Either way: tags the resulting commit checkpoint-<timestamp> and
-#     prints its hash.
+#     does NOT fabricate an empty commit. Says explicitly, using the label,
+#     what the tag is a safe point before — then tags the current HEAD as-is.
+#   - Either way: tags the resulting commit checkpoint-<timestamp>, prints
+#     its hash, and states which label the tag is a safe point before.
 #   - Any unexpected git failure (i.e. not the "nothing to commit" case)
 #     stops the script immediately via `set -e` and shows git's own error.
 #     Nothing here is caught and silenced.
 
 set -euo pipefail
 
-LABEL="${1:-unnamed}"
+if [ -z "${1:-}" ]; then
+	echo "Usage: bash scripts/ai-checkpoint \"label naming the action this is a safe point before\"" >&2
+	echo "ai-checkpoint: a non-empty label is required — no tag was created." >&2
+	exit 1
+fi
+LABEL="$1"
 TS="$(date +%Y-%m-%d_%H%M%S)"
 
 git add -A
 
 if git diff --cached --quiet; then
 	echo "ai-checkpoint: nothing staged to commit (working tree already matches HEAD)."
-	echo "ai-checkpoint: tagging the current HEAD as-is — no new commit created."
+	echo "ai-checkpoint: tagging current HEAD as safe point before action: ${LABEL}"
 else
 	git commit -m "checkpoint: before action ${LABEL} (${TS})"
 fi
@@ -37,5 +48,5 @@ fi
 TAG="checkpoint-${TS}"
 git tag "${TAG}"
 
-echo "ai-checkpoint: tag ${TAG} created."
+echo "ai-checkpoint: tag ${TAG} created (safe point before action: ${LABEL})."
 git rev-parse HEAD
