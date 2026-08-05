@@ -1,19 +1,23 @@
 #!/usr/bin/env node
-// ai-revert — READ-ONLY revert inspector + dry-run planner (Phase 4).
+// ai-revert — read-only inspector + dry-run planner + confirmed execute mode.
 //
-// AUDIT NOTE: the only git subcommands this file calls are:
-//   log, rev-list, diff, show, rev-parse
-// All read-only. There is no code path here that calls revert, reset,
-// stash, tag (with -d), commit, or writes to any file. Plan mode only
-// PRINTS the command it would run - it never executes git revert.
+// Git subcommands this file calls: log, rev-list, diff, show, rev-parse,
+// status, revert. `revert` only runs in execute mode, only after every
+// refusal check passes AND the user has typed REVERT at an interactive
+// prompt. There is no git reset, git stash, or git tag -d anywhere in this
+// file, and no code path writes to logs/ - the log entry for an execute run
+// is a separate, later step, same as every other action in this project.
 //
 // Usage:
-//   node scripts/ai-revert                    -> list recent candidates
-//   node scripts/ai-revert <action-id|hash>   -> inspect one candidate
-//   node scripts/ai-revert plan <action-id|hash> -> dry-run revert plan
+//   node scripts/ai-revert                       -> list recent candidates
+//   node scripts/ai-revert <action-id|hash>       -> inspect one candidate
+//   node scripts/ai-revert plan <action-id|hash>  -> dry-run revert plan
+//   node scripts/ai-revert execute <action-id|hash> -> confirmed real revert
 
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { createInterface } from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
 
 const JSONL_PATH = "logs/ai-action-log.jsonl";
 const PROTECTED_PREFIXES = ["logs/", ".env", "backups/"];
@@ -60,14 +64,12 @@ function recentCommits(count) {
 
 function parents(hash) {
 	const out = git(["rev-list", "--parents", "-1", hash]);
-	return out.split(" ").filter(Boolean).slice(1); // drop the commit itself
+	return out.split(" ").filter(Boolean).slice(1);
 }
 
 function touchedFiles(hash) {
 	const p = parents(hash);
 	if (p.length > 1) {
-		// Merge commit: diff against the first (mainline) parent, matching
-		// how `git revert -m 1` would be interpreted if that were ever added.
 		const out = git(["diff", "--name-only", p[0], hash]);
 		return out ? out.split("\n").filter(Boolean) : [];
 	}
@@ -92,7 +94,7 @@ function eligibility(hash, logEntry) {
 	const p = parents(hash);
 	const isMerge = p.length > 1;
 	if (isMerge) {
-		reasons.push(`merge commit (${p.length} parents) - needs -m <parent-number>, not handled by this read-only build`);
+		reasons.push(`merge commit (${p.length} parents) - needs -m <parent-number>, not handled by this build`);
 	}
 	const files = touchedFiles(hash);
 	const hits = protectedPathHits(files);
@@ -102,9 +104,6 @@ function eligibility(hash, logEntry) {
 	return { eligible: reasons.length === 0, reasons, isMerge, files, protectedHits: hits };
 }
 
-// Resolves a target (action id or commit-ish) to { ok, hash, logEntry } or
-// { ok: false, reason, message }. Pure lookup - no printing here, so both
-// inspect and plan modes can present failures in their own way.
 function resolveTarget(target) {
 	const { byCommit, byActionId } = readActionLog();
 	if (byActionId.has(target)) {
@@ -122,6 +121,19 @@ function resolveTarget(target) {
 	}
 }
 
+function isTreeDirty() {
+	return git(["status", "--porcelain"]).length > 0;
+}
+
+function isRevertInProgress() {
+	try {
+		git(["rev-parse", "--verify", "REVERT_HEAD"]);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 function formatList() {
 	const { byCommit, byActionId } = readActionLog();
 	const commits = recentCommits(LIST_COUNT);
@@ -134,7 +146,6 @@ function formatList() {
 		console.log(`${c.short}  ${c.subject}`);
 		console.log(`    -> ${tag}`);
 	}
-
 	const noCommitActions = [...byActionId.values()].filter((e) => !e.commit);
 	if (noCommitActions.length) {
 		console.log("\n--- logged actions with no commit (not revertable via this tool) ---");
@@ -144,8 +155,7 @@ function formatList() {
 			console.log(`    -> INELIGIBLE (no commit associated - ${why})`);
 		}
 	}
-
-	console.log("\n[ai-revert] Read-only inspector - no revert capability in this build.");
+	console.log("\n[ai-revert] Read-only inspector - no revert capability from list mode.");
 }
 
 function formatInspect(target) {
@@ -161,13 +171,11 @@ function formatInspect(target) {
 		return;
 	}
 	const { hash, logEntry } = r;
-
 	console.log(`[ai-revert] Inspecting ${hash}${logEntry ? ` (action ${logEntry.action_id})` : " (no log entry)"}\n`);
 	console.log("--- git show --stat ---");
 	console.log(git(["show", "--stat", hash]));
-
 	const elig = eligibility(hash, logEntry);
-	console.log("\n--- eligibility (informational only - no revert capability in this build) ---");
+	console.log("\n--- eligibility (informational only) ---");
 	console.log(`Merge commit: ${elig.isMerge ? "yes" : "no"}`);
 	console.log(`Files touched: ${elig.files.join(", ") || "(none detected)"}`);
 	console.log(`Protected-path hit: ${elig.protectedHits.length ? elig.protectedHits.join(", ") : "none"}`);
@@ -177,10 +185,6 @@ function formatInspect(target) {
 	}
 }
 
-// Dry-run planner: shows exactly what a future revert WOULD do, checking in
-// the same order as the objective lists them - revertable:false, protected
-// path, merge - stopping at the first one that applies. Never calls git
-// revert/reset/stash/commit; only prints what would run.
 function formatPlan(target) {
 	const r = resolveTarget(target);
 	if (!r.ok) {
@@ -193,14 +197,11 @@ function formatPlan(target) {
 		return;
 	}
 	const { hash, logEntry } = r;
-
 	console.log(`[ai-revert] Dry-run plan for ${hash}${logEntry ? ` (action ${logEntry.action_id})` : " (no log entry)"}\n`);
 	console.log("--- git show --stat ---");
 	console.log(git(["show", "--stat", hash]));
-
 	const elig = eligibility(hash, logEntry);
 	console.log(`\nFiles touched: ${elig.files.join(", ") || "(none detected)"}`);
-
 	if (logEntry && logEntry.revertable === false) {
 		console.log(`\n[ai-revert] PLAN REFUSED: log entry for action ${logEntry.action_id} is explicitly marked revertable:false.`);
 		return;
@@ -210,32 +211,160 @@ function formatPlan(target) {
 		return;
 	}
 	if (elig.isMerge) {
-		console.log("\n[ai-revert] PLAN REFUSED: this is a merge commit. Merge revert support (git revert -m <parent-number>) is not implemented yet in this build.");
+		console.log("\n[ai-revert] PLAN REFUSED: this is a merge commit. Merge revert support is not implemented yet in this build.");
 		return;
 	}
-
 	console.log("\n--- dry-run plan (nothing below this line has been run) ---");
 	console.log(`Would run:      git revert --no-edit ${hash}`);
 	console.log("Would then run: npm run check");
 	console.log("Would then run: npm run smoke");
 	console.log("Pass/fail for both would be judged by output text - 'CHECK-PASSED' for check, '[smoke] PASS:' / '[smoke] FAIL:' for smoke - never by exit codes.");
-	console.log("\n[ai-revert] Dry-run only in this build - no git revert, reset, stash, or commit has been executed.");
+	console.log("\n[ai-revert] Dry-run only - no git revert, reset, stash, or commit has been executed.");
 }
 
-function main() {
+async function confirmRevert(hash, logEntry) {
+	const rl = createInterface({ input, output });
+	try {
+		const answer = await rl.question(
+			`\nType REVERT to confirm reverting ${hash}${logEntry ? ` (action ${logEntry.action_id})` : ""}. Anything else cancels: `,
+		);
+		return answer.trim() === "REVERT";
+	} finally {
+		rl.close();
+	}
+}
+
+function runCapture(cmd, args) {
+	try {
+		// shell:true so npm.cmd resolves correctly via PATH on Windows -
+		// execFileSync without it fails with ENOENT for .cmd-shimmed tools
+		// even when the same command works fine typed into a real shell.
+		const out = execFileSync(cmd, args, { encoding: "utf-8", shell: true });
+		return { out, failed: false };
+	} catch (err) {
+		const out = (err.stdout ? err.stdout.toString() : "") + (err.stderr ? err.stderr.toString() : "") + (err.message || "");
+		return { out, failed: true };
+	}
+}
+
+async function formatExecute(target) {
+	const r = resolveTarget(target);
+	if (!r.ok) {
+		if (r.reason === "no-commit") {
+			console.log(`[ai-revert] EXECUTE REFUSED for ${target}: no commit associated (commit:null in the log) - nothing to revert.`);
+		} else {
+			console.error(`[ai-revert] EXECUTE REFUSED: "${target}" is not a known action id and not a valid commit: ${r.message}`);
+			process.exitCode = 1;
+		}
+		return;
+	}
+	const { hash, logEntry } = r;
+
+	console.log(`[ai-revert] Execute request for ${hash}${logEntry ? ` (action ${logEntry.action_id})` : " (no log entry)"}\n`);
+	console.log("--- git show --stat ---");
+	console.log(git(["show", "--stat", hash]));
+
+	const elig = eligibility(hash, logEntry);
+	console.log(`\nFiles touched: ${elig.files.join(", ") || "(none detected)"}`);
+
+	if (logEntry && logEntry.revertable === false) {
+		console.log(`\n[ai-revert] EXECUTE REFUSED: log entry for action ${logEntry.action_id} is explicitly marked revertable:false.`);
+		return;
+	}
+	if (elig.protectedHits.length) {
+		console.log(`\n[ai-revert] EXECUTE REFUSED: touches protected path(s): ${elig.protectedHits.join(", ")}.`);
+		return;
+	}
+	if (elig.isMerge) {
+		console.log("\n[ai-revert] EXECUTE REFUSED: this is a merge commit. Merge revert support is not implemented in this build - use a separate, explicit flow for merges.");
+		return;
+	}
+	if (isRevertInProgress()) {
+		console.log("\n[ai-revert] EXECUTE REFUSED: a revert is already in progress (REVERT_HEAD exists).");
+		console.log("Recovery command: git revert --abort");
+		return;
+	}
+	if (isTreeDirty()) {
+		console.log("\n[ai-revert] EXECUTE REFUSED: working tree is not clean.");
+		console.log(git(["status", "--porcelain"]));
+		return;
+	}
+
+	console.log("\n--- plan (nothing has been run yet) ---");
+	console.log(`Would run:      git revert --no-edit ${hash}`);
+	console.log("Would then run: npm run check");
+	console.log("Would then run: npm run smoke");
+
+	const confirmed = await confirmRevert(hash, logEntry);
+	if (!confirmed) {
+		console.log("\n[ai-revert] Not confirmed - nothing done.");
+		return;
+	}
+
+	console.log(`\n[ai-revert] Running: git revert --no-edit ${hash}`);
+	const revertResult = runCapture("git", ["revert", "--no-edit", hash]);
+	console.log(revertResult.out);
+	if (revertResult.failed) {
+		if (isRevertInProgress()) {
+			console.log("[ai-revert] Conflict - a revert is now in progress. This tool will NOT resolve it automatically.");
+			console.log("Recovery command: git revert --abort");
+		} else {
+			console.log("[ai-revert] git revert failed for a reason other than a normal conflict. Manual review needed.");
+		}
+		process.exitCode = 1;
+		return;
+	}
+
+	const newHash = git(["rev-parse", "HEAD"]);
+	console.log(`[ai-revert] Revert commit created: ${newHash}`);
+
+	console.log("\n[ai-revert] Verifying: npm run check");
+	const checkResult = runCapture("npm", ["run", "check"]);
+	console.log(checkResult.out);
+	const checkPassed = checkResult.out.includes("CHECK-PASSED");
+
+	console.log("[ai-revert] Verifying: npm run smoke");
+	const smokeResult = runCapture("npm", ["run", "smoke"]);
+	console.log(smokeResult.out);
+	const smokePassed = smokeResult.out.includes("[smoke] PASS:") && !smokeResult.out.includes("[smoke] FAIL:");
+
+	console.log(`\ncheck: ${checkPassed ? "CHECK-PASSED found" : "CHECK-PASSED NOT found"}`);
+	console.log(`smoke: ${smokePassed ? "[smoke] PASS: found, no FAIL" : "[smoke] PASS: missing or [smoke] FAIL: present"}`);
+
+	if (checkPassed && smokePassed) {
+		console.log(`\n[ai-revert] Verification passed (judged by output text, not exit codes). Revert commit: ${newHash}`);
+	} else {
+		console.log("\n[ai-revert] Verification FAILED or inconclusive after the revert.");
+		console.log("[ai-revert] Manual review needed. This tool will NOT auto-reset or revert-the-revert.");
+		process.exitCode = 1;
+	}
+}
+
+async function main() {
 	const [first, second] = process.argv.slice(2);
 	if (!first) {
 		formatList();
-	} else if (first === "plan") {
+		return;
+	}
+	if (first === "plan") {
 		if (!second) {
 			console.error('[ai-revert] "plan" requires a target: node scripts/ai-revert plan <action-id-or-hash>');
 			process.exitCode = 1;
 			return;
 		}
 		formatPlan(second);
-	} else {
-		formatInspect(first);
+		return;
 	}
+	if (first === "execute") {
+		if (!second) {
+			console.error('[ai-revert] "execute" requires a target: node scripts/ai-revert execute <action-id-or-hash>');
+			process.exitCode = 1;
+			return;
+		}
+		await formatExecute(second);
+		return;
+	}
+	formatInspect(first);
 }
 
 main();
