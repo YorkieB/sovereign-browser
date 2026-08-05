@@ -37,3 +37,7 @@ Commit: 6053eed05b95effcc9bdb108887402ce4233baeb  Status: success
 ### 2026-08-05T21:52:53+01:00 — 012
 Instruction: Add verification ladder foundation (Phase 3, smallest piece): lightweight check script in package.json
 Commit: 09bbdae4e2ee060a409cad63014e9e4c5b787d24  Status: success
+
+### 2026-08-05T22:09:58+01:00 — 014
+Instruction: Add Tier 2 main-process smoke hook to main.js only (--smoke-test detection, smokeFail helper, catch-block branch, did-fail-load/render-process-gone/did-finish-load/timeout listeners)
+Commit: b02624049b5daada204e0cf3a7dfd92e05c10f57  Status: success
