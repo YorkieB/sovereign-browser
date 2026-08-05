@@ -57,3 +57,7 @@ Commit: 09f16b45aff3e314d4d0bbb2ec6ea81ff15379ab  Status: success
 ### 2026-08-05T23:14:02+01:00 — 022
 Instruction: Extend scripts/ai-revert from read-only inspection to dry-run revert planning only - still no actual git revert/reset/stash/commit capability
 Commit: c51fe04c1af755254ad4ade041e7e92c5b523bb3  Status: success
+
+### 2026-08-05T23:23:56+01:00 — 024
+Instruction: Add confirmed git-revert execution (execute mode) to scripts/ai-revert - reuses plan-mode eligibility checks, adds dirty-tree/revert-in-progress refusal, requires typed REVERT, runs check+smoke after, judged by output text
+Commit: 703e87706c0e71c855d2f1da9dae9c2936624fa3  Status: success
