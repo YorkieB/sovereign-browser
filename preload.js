@@ -48,6 +48,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 			"ext:create-tab",
 			"ext:select-tab",
 			"ext:remove-tab",
+			"holly:menu-action",
 		]);
 		if (!allowed.has(channel)) {
 			throw new Error("electronAPI.on: channel not allowed: " + channel);
@@ -57,3 +58,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		return () => ipcRenderer.removeListener(channel, wrapped);
 	},
 }); // [NRS-1001]
+// [SovereignBrowser] Toolbar extension icons (Edge/Chrome-style row). Injects
+// the <browser-action-list> element API into HOLLY's chrome window. Requires
+// the window to be unsandboxed; tab pages are unaffected (separate WCVs).
+try {
+	const { injectBrowserAction } = require("electron-chrome-extensions/browser-action");
+	injectBrowserAction();
+} catch (err) {
+	console.error("[SovereignBrowser] browser-action injection failed:", err);
+}

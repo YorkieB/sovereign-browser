@@ -1854,7 +1854,7 @@ webview.src = url; // [NRS-1301]
 	function ensureWcvLayoutPump() {
 		if (wcvPumpStarted) { return; }
 		wcvPumpStarted = true;
-		const OVERLAY_SELECTORS = ["#omnibox-suggestions", ".menu-dropdown", "#overflow-menu", ".context-menu", "#find-bar", "#bookmarks-menu-list"];
+		const OVERLAY_SELECTORS = ["#omnibox-suggestions", ".context-menu", "#find-bar"]; // menus are native in WCV mode
 		const MODAL_SELECTORS = [".modal", "#jarvis-swirl-overlay"];
 		const lastSent = new Map();
 		function isShown(el) {
@@ -1990,6 +1990,72 @@ webview.src = url; // [NRS-1301]
 		}
 	}
 
+	// [SovereignBrowser] Native chrome menus (WCV mode). DOM dropdowns paint
+	// under native views, and insetting the page below them vacated a white
+	// strip. Collect the same rows, pop a native menu in main, and route the
+	// chosen index back to a .click() on the original element, so every
+	// existing handler keeps working untouched.
+	let __nativeMenuTargets = [];
+	function popupNativeMenu(container, anchorEl, rowButtonSel, labelFor) {
+		const items = [];
+		__nativeMenuTargets = [];
+		for (const child of container.children) {
+			if (child.classList.contains("ovf-sep") || child.classList.contains("menu-separator")) {
+				if (items.length && !items[items.length - 1].sep) { items.push({ sep: true }); }
+				continue;
+			}
+			if (child.id === "bookmarks-menu-list") {
+				for (const opt of child.querySelectorAll(".menu-option")) {
+					const t = (opt.textContent || "").trim();
+					if (!t) { continue; }
+					items.push({ i: __nativeMenuTargets.length, label: t });
+					__nativeMenuTargets.push(opt);
+				}
+				continue;
+			}
+			const target = rowButtonSel ? child.querySelector(rowButtonSel) : child;
+			if (!target) { continue; }
+			const label = labelFor ? labelFor(child, target) : (child.textContent || "").trim();
+			if (!label) { continue; }
+			items.push({ i: __nativeMenuTargets.length, label });
+			__nativeMenuTargets.push(target);
+		}
+		const r = anchorEl.getBoundingClientRect();
+		globalThis.electronAPI.invoke("holly:popup-menu", { items: items, x: Math.round(r.left), y: Math.round(r.bottom) }).catch((err) => {
+			console.warn("[menus] native popup failed:", err && err.message);
+		});
+	}
+	if (USE_WCV) {
+		document.body.classList.add("native-menus");
+		const ovfExt = document.getElementById("btn-ovf-extensions");
+		if (ovfExt) { ovfExt.addEventListener("click", () => { const b = document.getElementById("btn-extensions-bar"); if (b) { b.click(); } }); }
+		globalThis.electronAPI.on("holly:menu-action", (payload) => {
+			const el = __nativeMenuTargets[payload && payload.i];
+			if (el) { el.click(); }
+		});
+		const ovfBtn = document.getElementById("btn-overflow");
+		const ovfMenu = document.getElementById("overflow-menu");
+		if (ovfBtn && ovfMenu) {
+			ovfBtn.addEventListener("click", (e) => {
+				e.preventDefault();
+				e.stopImmediatePropagation();
+				popupNativeMenu(ovfMenu, ovfBtn, "button", (row) => {
+					const s = row.querySelector(".ovf-label");
+					return s ? (s.textContent || "").trim() : "";
+				});
+			}, true);
+		}
+		for (const mi of document.querySelectorAll("#menu-bar .menu-item")) {
+			const lbl = mi.querySelector(".menu-label");
+			const dd = mi.querySelector(".menu-dropdown");
+			if (!lbl || !dd) { continue; }
+			lbl.addEventListener("click", (e) => {
+				e.preventDefault();
+				e.stopImmediatePropagation();
+				popupNativeMenu(dd, lbl, null, (child) => (child.classList && child.classList.contains("menu-option")) ? (child.textContent || "").trim() : "");
+			}, true);
+		}
+	}
 	btnBack.addEventListener("click", () => {
 		// [NRS-1301]
 		const tab = tabs.find((t) => t.id === activeTabId); // [NRS-1301]

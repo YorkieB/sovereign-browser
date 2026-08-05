@@ -74,7 +74,7 @@ function createWindow() {
       nodeIntegration: false, // [NRS-1001]
       webviewTag: true, // [NRS-1001]
       session: browsingSession(), // [SovereignBrowser] same session as tabs
-      sandbox: true, // [SovereignBrowser] required for extension preload scripts
+      sandbox: false, // [SovereignBrowser] chrome UI needs a full preload for browser-action injection; tab pages are separate WCVs with sandbox:true
     }, // [NRS-1001]
   }); // [NRS-1501] Create browser window with security settings
 
@@ -250,6 +250,35 @@ function mainWindow() {
 
 // Extensions ask the browser to open, select and close tabs. HOLLY's tabs live
 // in the renderer, so forward these as IPC messages it already understands.
+// [SovereignBrowser] Native popup menus for browser chrome. DOM dropdowns
+// paint UNDER WebContentsViews; shifting the page down leaves a vacated
+// strip. Native menus float above everything, so no inset is needed.
+ipcMain.handle('holly:popup-menu', (event, payload) => {
+  try {
+    const { Menu } = require('electron');
+    const win = mainWindow();
+    if (!win || !payload || !Array.isArray(payload.items)) { return { ok: false, error: 'bad payload' }; }
+    const template = payload.items.map((it) => {
+      if (it && it.sep) { return { type: 'separator' }; }
+      return {
+        label: String(it.label || ''),
+        enabled: it.enabled !== false,
+        click: () => tellRenderer('holly:menu-action', { i: it.i }),
+      };
+    });
+    console.log('[Holly] popup-menu request:', template.length, 'items at', payload.x, payload.y);
+    if (!template.length) { return { ok: false, error: 'empty menu' }; }
+    Menu.buildFromTemplate(template).popup({
+      window: win,
+      x: Math.round(payload.x || 0),
+      y: Math.round(payload.y || 0),
+    });
+    return { ok: true };
+  } catch (err) {
+    console.warn('[Holly] popup-menu failed:', err.message);
+    return { ok: false, error: err.message };
+  }
+});
 function tellRenderer(channel, payload) {
   const win = mainWindow();
   if (win && !win.webContents.isDestroyed()) {
@@ -587,9 +616,9 @@ ipcMain.handle('mic:open-settings', async () => {
 // electron-chrome-extensions supplies the tab/popup/browser-action APIs that
 // Electron lacks; electron-chrome-web-store adds Web Store installation and
 // remembers what is installed, which Electron does not do on its own.
-async function setupChromeExtensions() {
+function ensureExtensionsInstance() {
+  if (chromeExtensions) { return; }
   const browserSession = browsingSession();
-
   chromeExtensions = new ElectronChromeExtensions({
     // Dual licensed: GPL-3.0 or a paid Patron licence. HOLLY is GPL-3.0.
     license: 'GPL-3.0',
@@ -612,6 +641,11 @@ async function setupChromeExtensions() {
       return mainWindow();
     },
   });
+}
+
+async function setupChromeExtensions() {
+  const browserSession = browsingSession();
+  ensureExtensionsInstance();
 
   // [SovereignBrowser] Views created before this point could not register with
   // the extension system; register them now.
@@ -704,6 +738,9 @@ async function setupChromeExtensions() {
     await loadExtensions();
     setupJarvisAgentHandlers();
 
+    // Extensions instance must exist before the chrome window loads, or the
+    // <browser-action-list> element's first state query finds no handler.
+    ensureExtensionsInstance();
     createWindow();
     const mainWin = BrowserWindow.getAllWindows()[0];
     if (!mainWin) {

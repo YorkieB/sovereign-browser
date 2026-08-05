@@ -94,7 +94,7 @@
 				<div id="omnibox-suggestions" class="omnibox-suggestions"></div>
 			</div>
 			<div class="right"><!-- [NRS-1301] -->
-				<div class="addon-right"></div><!-- [SovereignBrowser] extension icons -->
+				<div class="chrome-actions"><browser-action-list id="holly-actions" partition="persist:holly" alignment="bottom right"></browser-action-list></div><div class="addon-right"></div><!-- [SovereignBrowser] extension icons -->
 				<button id="btn-extensions-bar" title="Extensions">&#129513;</button>
 				<span id="extensions-count" class="extensions-count" title="Enabled extensions">0 enabled</span>
 				<button id="btn-jarvis" title="Jarvis Assistant">&#129302;</button>
@@ -134,6 +134,11 @@
 						<div class="ovf-row" role="menuitem">
 							<button id="btn-devtools-auto" title="Toggle auto-open DevTools">Auto DT</button>
 							<span class="ovf-label">Auto-open DevTools</span>
+						</div>
+						<div class="ovf-sep"></div>
+						<div class="ovf-row" role="menuitem">
+							<button id="btn-ovf-extensions" title="Extensions">&#129513;</button>
+							<span class="ovf-label">Extensions</span>
 						</div>
 						<div class="ovf-sep"></div>
 						<div class="ovf-row" role="menuitem">
@@ -438,4 +443,3 @@
 	</body><!-- [NRS-1301] -->
 </html>
 <!-- [NRS-1301] -->
-

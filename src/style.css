@@ -2335,3 +2335,29 @@ textarea:focus {
 #content.split-view {
 	flex-direction: row;
 }
+
+/* [SovereignBrowser] Native chrome menus (WCV mode): the DOM dropdowns are
+   never shown - hover included - so the layout pump has nothing to inset. */
+body.native-menus .menu-dropdown,
+body.native-menus #overflow-menu {
+	display: none !important;
+}
+/* The one remaining inset (omnibox suggestions) vacates a short strip above
+   the page; tint it as chrome instead of a bare white hole. */
+#content {
+	background: #ececee;
+}
+
+/* [SovereignBrowser] Toolbar extension icon row (Edge/Chrome-style). */
+.addon-right browser-action-list {
+	display: inline-flex;
+	align-items: center;
+	height: 30px;
+}
+
+/* Chrome-extension action row gets its own container: the legacy custom
+   extension code wipes .addon-right with innerHTML on load. */
+.chrome-actions {
+	display: flex;
+	align-items: center;
+}
