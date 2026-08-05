@@ -41,3 +41,7 @@ Commit: 09bbdae4e2ee060a409cad63014e9e4c5b787d24  Status: success
 ### 2026-08-05T22:09:58+01:00 — 014
 Instruction: Add Tier 2 main-process smoke hook to main.js only (--smoke-test detection, smokeFail helper, catch-block branch, did-fail-load/render-process-gone/did-finish-load/timeout listeners)
 Commit: b02624049b5daada204e0cf3a7dfd92e05c10f57  Status: success
+
+### 2026-08-05T22:45:57+01:00 — 016
+Instruction: Guard tab view cleanup in destroyTab() when the parent BrowserWindow is already destroyed, per the read-only diagnosis of the post-smoke-PASS warning
+Commit: dd1dd886e11a973effb0c2ef6b0edcb180f6f58d  Status: success
