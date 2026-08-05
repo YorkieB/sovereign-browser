@@ -49,3 +49,7 @@ Commit: dd1dd886e11a973effb0c2ef6b0edcb180f6f58d  Status: success
 ### 2026-08-05T22:56:01+01:00 — 018
 Instruction: Add npm smoke script to package.json now that the main-process hook is proven and the smoke-only tab:load/tab:activate IPC noise is understood and accepted as-is
 Commit: 54dbf6ff0c9b42f1470a823d90cdf4e9d5e20f97  Status: success
+
+### 2026-08-05T23:07:35+01:00 — 020
+Instruction: Add scripts/ai-revert as a read-only revert inspector - Phase 4 foundation, no mutating capability yet
+Commit: 09f16b45aff3e314d4d0bbb2ec6ea81ff15379ab  Status: success
