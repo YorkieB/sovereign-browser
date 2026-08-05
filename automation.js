@@ -89,6 +89,42 @@ function typeSrc(i, textJson, submit) {
     return { ok: true, typedInto: (el.getAttribute('aria-label') || el.placeholder || el.name || el.tagName).slice(0, 60) };
   })()`;
 }
+function selectSrc(i, valueJson) {
+  return `(() => {
+    const el = (window.__hollyRefs || [])[${i}];
+    if (!el || !el.isConnected) { return { ok: false, error: 'stale ref ${i} - call browser_page_state again' }; }
+    if (el.tagName !== 'SELECT') { return { ok: false, error: 'ref ${i} is not a dropdown (' + el.tagName + ')' }; }
+    const want = String(${valueJson});
+    const wl = want.toLowerCase();
+    let chosen = null;
+    for (const opt of el.options) {
+      if (opt.value === want || opt.text === want) { chosen = opt; break; }
+    }
+    if (!chosen) { for (const opt of el.options) { if (opt.text.toLowerCase().includes(wl) || opt.value.toLowerCase() === wl) { chosen = opt; break; } } }
+    if (!chosen) { return { ok: false, error: 'no option matching ' + JSON.stringify(want) + ' in [' + Array.from(el.options).map(o => o.text).join(', ').slice(0, 200) + ']' }; }
+    el.focus();
+    el.value = chosen.value;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    return { ok: true, selected: chosen.text };
+  })()`;
+}
+
+function keySrc(keyName) {
+  const map = { enter: { key: 'Enter', code: 'Enter', keyCode: 13 }, tab: { key: 'Tab', code: 'Tab', keyCode: 9 }, escape: { key: 'Escape', code: 'Escape', keyCode: 27 }, esc: { key: 'Escape', code: 'Escape', keyCode: 27 }, backspace: { key: 'Backspace', code: 'Backspace', keyCode: 8 }, delete: { key: 'Delete', code: 'Delete', keyCode: 46 }, arrowdown: { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40 }, arrowup: { key: 'ArrowUp', code: 'ArrowUp', keyCode: 38 }, arrowleft: { key: 'ArrowLeft', code: 'ArrowLeft', keyCode: 37 }, arrowright: { key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 }, pagedown: { key: 'PageDown', code: 'PageDown', keyCode: 34 }, pageup: { key: 'PageUp', code: 'PageUp', keyCode: 33 }, home: { key: 'Home', code: 'Home', keyCode: 36 }, end: { key: 'End', code: 'End', keyCode: 35 } };
+  const spec = map[String(keyName || '').toLowerCase()] || null;
+  return `(() => {
+    const spec = ${JSON.stringify(spec)};
+    if (!spec) { return { ok: false, error: 'unsupported key: ${keyName}' }; }
+    const el = document.activeElement || document.body;
+    const o = Object.assign({ bubbles: true, cancelable: true, which: spec.keyCode }, spec);
+    el.dispatchEvent(new KeyboardEvent('keydown', o));
+    el.dispatchEvent(new KeyboardEvent('keypress', o));
+    el.dispatchEvent(new KeyboardEvent('keyup', o));
+    return { ok: true, pressed: spec.key };
+  })()`;
+}
+
 async function withActive(tabViews, fn) {
   const wc = tabViews.activeWebContents();
   if (!wc || wc.isDestroyed()) { return { ok: false, error: 'no active tab' }; }
@@ -119,6 +155,34 @@ function setupAutomation({ tabViews, tellRenderer }) {
     const i = Number(ref);
     if (!Number.isInteger(i) || i < 0) { return { ok: false, error: 'ref must be a non-negative integer' }; }
     return await wc.executeJavaScript(typeSrc(i, JSON.stringify(String(text == null ? '' : text)), !!submit), true);
+  }));
+
+  ipcMain.handle('holly:auto:select', (event, { ref, value }) => withActive(tabViews, async (wc) => {
+  	const i = Number(ref);
+  	if (!Number.isInteger(i) || i < 0) { return { ok: false, error: 'ref must be a non-negative integer' }; }
+  	return await wc.executeJavaScript(selectSrc(i, JSON.stringify(String(value == null ? "" : value))), true);
+  }));
+
+  ipcMain.handle('holly:auto:key', (event, { key }) => withActive(tabViews, async (wc) => {
+  	return await wc.executeJavaScript(keySrc(key), true);
+  }));
+
+  ipcMain.handle('holly:auto:submit-wait', (event, { ref }) => withActive(tabViews, async (wc) => {
+  	const i = Number(ref);
+  	if (!Number.isInteger(i) || i < 0) { return { ok: false, error: 'ref must be a non-negative integer' }; }
+  	const navigated = new Promise((resolve) => {
+  		let done = false;
+  		const finish = (how) => { if (!done) { done = true; cleanup(); resolve(how); } };
+  		const cleanup = () => { wc.removeListener('did-finish-load', ok); wc.removeListener('did-navigate', ok); };
+  		const ok = () => finish('navigated');
+  		wc.once('did-finish-load', ok);
+  		wc.once('did-navigate', ok);
+  		setTimeout(() => finish('timeout'), 12000);
+  	});
+  	const clickRes = await wc.executeJavaScript(clickSrc(i), true);
+  	if (clickRes && clickRes.ok === false) { return clickRes; }
+  	const how = await navigated;
+  	return { ok: true, clicked: (clickRes && clickRes.clicked) || null, result: how, url: wc.getURL() };
   }));
 
   ipcMain.handle('holly:auto:scroll', (event, { dy }) => withActive(tabViews, async (wc) => {
@@ -171,6 +235,16 @@ function setupAutomation({ tabViews, tellRenderer }) {
 
   ipcMain.handle('holly:auto:tabs', () => {
     try { return { ok: true, tabs: tabViews.listTabs() }; } catch (err) { return { ok: false, error: err.message }; }
+  });
+
+  ipcMain.handle('holly:auto:log', (event, entry) => {
+  	try {
+  		const os = require('os'); const fsx = require('fs'); const pth = require('path');
+  		const dir = pth.join(process.env.LOCALAPPDATA || os.homedir(), 'SovereignBrowser');
+  		fsx.mkdirSync(dir, { recursive: true });
+  		fsx.appendFileSync(pth.join(dir, 'holly-actions.log'), JSON.stringify(entry) + '\n', 'utf8');
+  		return { ok: true };
+  	} catch (err) { return { ok: false, error: err.message }; }
   });
 
   ipcMain.handle('holly:auto:tab-new', (event, { url }) => {
