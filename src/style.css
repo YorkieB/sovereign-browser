@@ -2415,3 +2415,11 @@ body.native-menus #overflow-menu {
 .holly-skill:hover { background: #f0f0f2; }
 #holly-attach { border: 1px solid #d0d0d4; background: #fff; border-radius: 8px; cursor: pointer; padding: 4px 8px; }
 #holly-attach.has-file { background: #e7f0ff; border-color: #9db8e8; }
+
+/* [SovereignBrowser] Holly chat history controls */
+.jarvis-hbtn { border: none; background: transparent; cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 6px; }
+.jarvis-hbtn:hover { background: rgba(255,255,255,0.25); }
+.holly-chat-row { cursor: pointer; }
+.holly-chat-row:hover { filter: brightness(0.95); }
+.holly-chat-del { opacity: 0.55; cursor: pointer; margin-left: 6px; }
+.holly-chat-del:hover { opacity: 1; }

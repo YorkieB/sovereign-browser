@@ -26,6 +26,32 @@ globalThis.addEventListener("unhandledrejection", (ev) => {
 // leaves this PC. Change LLM_MODEL to any model id LM Studio is serving.
 const OPENAI_BASE = "http://localhost:1234/v1";
 const LLM_MODEL = "qwen2.5-vl-7b-instruct-abliterated";
+
+// [SovereignBrowser] Two-brain setup: a strong tool-caller drives the
+// agent loop; the VL model handles anything with eyes. Auto-picked from
+// whatever LM Studio has downloaded: download a better model, restart
+// HOLLY, done.
+let hollyAgentModel = LLM_MODEL;
+let hollyVisionModel = LLM_MODEL;
+(async function hollyPickModels() {
+	try {
+		const resp = await fetch(OPENAI_BASE + "/models");
+		if (!resp.ok) { return; }
+		const data = await resp.json();
+		const ids = (data.data || []).map((mm) => mm.id);
+		const pick = (patterns) => {
+			for (const p of patterns) { const hit = ids.find((id) => p.test(id)); if (hit) { return hit; } }
+			return null;
+		};
+		const agent = pick([/qwen3(?!.*(vl|embed))/i, /gemma-?4/i, /glm/i, /mistral-?small/i, /qwen2\.5(?!.*(vl|embed)).*instruct/i]);
+		if (agent) { hollyAgentModel = agent; }
+		const vision = pick([/vl|vision/i]);
+		if (vision) { hollyVisionModel = vision; }
+		console.log("[Holly] brains - agent:", hollyAgentModel, "| vision:", hollyVisionModel);
+	} catch (err) {
+		console.warn("[Holly] model pick failed, using defaults:", err.message);
+	}
+})();
 const OPENAI_API_KEY = "lm-studio"; // LM Studio ignores the value, header must exist
 // ===========================================================================
 /* eslint-disable no-undef, no-unused-vars, no-console */ // [NRS-1301]
@@ -4072,6 +4098,86 @@ btnHome.addEventListener("click", () => {
 		if (result && result.ok === false) { line += " - failed: " + (result.error || "unknown"); }
 		addJarvisMessage("\u2699 " + line, false);
 	}
+	// [SovereignBrowser] Chat persistence: localStorage-backed history with
+	// New chat / reopen / delete. Saved after every completed exchange.
+	const HOLLY_CHATS_KEY = "holly.chats";
+	let hollyCurrentChatId = "chat-" + Date.now();
+	function hollyChatsLoad() {
+		try { return JSON.parse(localStorage.getItem(HOLLY_CHATS_KEY) || "[]"); } catch (err) { return []; }
+	}
+	function hollyChatsWrite(list) {
+		try { localStorage.setItem(HOLLY_CHATS_KEY, JSON.stringify(list.slice(0, 30))); } catch (err) { console.warn("[Holly] chat save failed:", err.message); }
+	}
+	function hollyMsgText(content) {
+		if (typeof content === "string") { return content; }
+		if (Array.isArray(content)) { const tp = content.find((c) => c && c.type === "text"); return (tp && tp.text) || "[image]"; }
+		return "";
+	}
+	function hollySaveChat() {
+		const meaningful = conversationHistory.filter((mm) => mm.role === "user" || mm.role === "assistant");
+		if (!meaningful.length) { return; }
+		const list = hollyChatsLoad().filter((c) => c.id !== hollyCurrentChatId);
+		const first = meaningful.find((mm) => mm.role === "user");
+		list.unshift({
+			id: hollyCurrentChatId,
+			title: hollyMsgText(first ? first.content : "").slice(0, 42) || "Untitled chat",
+			updatedAt: Date.now(),
+			messages: meaningful.map((mm) => ({ role: mm.role, content: hollyMsgText(mm.content) })),
+		});
+		hollyChatsWrite(list);
+	}
+	function hollyRenderConversation() {
+		jarvisMessages.innerHTML = "";
+		for (const mm of conversationHistory) {
+			if (mm.role !== "user" && mm.role !== "assistant") { continue; }
+			addJarvisMessage(hollyMsgText(mm.content), mm.role === "user");
+		}
+	}
+	function hollyNewChat() {
+		hollySaveChat();
+		conversationHistory = [];
+		hollyCurrentChatId = "chat-" + Date.now();
+		jarvisMessages.innerHTML = "";
+		addJarvisMessage("New chat started.", false);
+	}
+	function hollyShowHistory() {
+		hollySaveChat();
+		const list = hollyChatsLoad();
+		jarvisMessages.innerHTML = "";
+		if (!list.length) { addJarvisMessage("No saved chats yet.", false); return; }
+		addJarvisMessage("Chat history - click one to reopen:", false);
+		for (const c of list) {
+			const row = document.createElement("div");
+			row.className = "jarvis-message assistant holly-chat-row";
+			const when = new Date(c.updatedAt);
+			row.textContent = c.title + "  (" + when.toLocaleDateString() + " " + when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + ")";
+			row.addEventListener("click", () => { hollyLoadChat(c.id); });
+			const del = document.createElement("span");
+			del.className = "holly-chat-del";
+			del.textContent = " \u2715";
+			del.title = "Delete this chat";
+			del.addEventListener("click", (ev) => { ev.stopPropagation(); hollyDeleteChat(c.id); });
+			row.appendChild(del);
+			jarvisMessages.appendChild(row);
+		}
+		jarvisMessages.scrollTop = 0;
+	}
+	function hollyLoadChat(id) {
+		const c = hollyChatsLoad().find((x) => x.id === id);
+		if (!c) { addJarvisMessage("Chat not found.", false); return; }
+		hollyCurrentChatId = c.id;
+		conversationHistory = c.messages.map((mm) => ({ role: mm.role, content: mm.content }));
+		hollyRenderConversation();
+	}
+	function hollyDeleteChat(id) {
+		hollyChatsWrite(hollyChatsLoad().filter((c) => c.id !== id));
+		if (id === hollyCurrentChatId) { conversationHistory = []; hollyCurrentChatId = "chat-" + Date.now(); }
+		hollyShowHistory();
+	}
+	const hollyNewBtn = document.getElementById("holly-new-chat");
+	if (hollyNewBtn) { hollyNewBtn.addEventListener("click", hollyNewChat); }
+	const hollyHistBtn = document.getElementById("holly-history");
+	if (hollyHistBtn) { hollyHistBtn.addEventListener("click", hollyShowHistory); }
 	let hollyAttachment = null;
 	function hollySetAttachment(att) {
 		hollyAttachment = att;
@@ -4085,11 +4191,11 @@ btnHome.addEventListener("click", () => {
 		const els = (st.elements || []).slice(0, 60).map((el) => "[" + el.ref + "] " + el.tag + (el.type ? ":" + el.type : "") + " " + (el.label || "") + (el.href ? " -> " + el.href : "")).join("\n");
 		return "CURRENT PAGE (fresh snapshot)\nURL: " + st.url + "\nTITLE: " + st.title + "\n\nVISIBLE TEXT (truncated):\n" + (st.text || "").slice(0, 2600) + "\n\nINTERACTIVE ELEMENTS (refs for browser_click / browser_type):\n" + els;
 	}
-	async function hollyOneShot(oneShotMessages) {
+	async function hollyOneShot(oneShotMessages, modelOverride) {
 		const resp = await fetch(OPENAI_BASE + "/chat/completions", {
 			method: "POST",
 			headers: { "Content-Type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
-			body: JSON.stringify({ model: LLM_MODEL, messages: oneShotMessages, temperature: 0.3 }),
+			body: JSON.stringify({ model: modelOverride || hollyAgentModel, messages: oneShotMessages, temperature: 0.3 }),
 		});
 		if (!resp.ok) { throw new Error("LM Studio " + resp.status + " " + resp.statusText); }
 		const data = await resp.json();
@@ -4105,6 +4211,7 @@ btnHome.addEventListener("click", () => {
 					{ role: "user", content: ctx },
 				]);
 				conversationHistory.push({ role: "assistant", content: out });
+				hollySaveChat();
 				addJarvisMessage(out, false);
 				return;
 			}
@@ -4122,8 +4229,9 @@ btnHome.addEventListener("click", () => {
 				const out = await hollyOneShot([
 					{ role: "system", content: "You are Holly. Describe what is on this screenshot of the current browser tab: layout, main content, notable elements. Be concrete and brief." },
 					{ role: "user", content: [ { type: "text", text: "Describe this page screenshot." }, { type: "image_url", image_url: { url: shot.dataUrl } } ] },
-				]);
+				], hollyVisionModel);
 				conversationHistory.push({ role: "assistant", content: out });
+				hollySaveChat();
 				addJarvisMessage(out, false);
 				return;
 			}
@@ -4162,6 +4270,7 @@ btnHome.addEventListener("click", () => {
 			messages.push({ role: "system", content: "ATTACHED FILE " + hollyAttachment.name + ":\n" + hollyAttachment.text.slice(0, 9000) });
 			addJarvisMessage("\uD83D\uDCCE using attached file: " + hollyAttachment.name, false);
 		}
+		const hollyTurnModel = (hollyAttachment && hollyAttachment.kind === "image") ? hollyVisionModel : hollyAgentModel;
 		messages.push(hollyUserMsg);
 		hollySetAttachment(null);
 		try {
@@ -4170,7 +4279,7 @@ btnHome.addEventListener("click", () => {
 				const resp = await fetch(OPENAI_BASE + "/chat/completions", {
 					method: "POST",
 					headers: { "Content-Type": "application/json", Authorization: "Bearer " + OPENAI_API_KEY },
-					body: JSON.stringify({ model: LLM_MODEL, messages: messages, tools: HOLLY_TOOLS, tool_choice: "auto", temperature: 0.2 }),
+					body: JSON.stringify({ model: hollyTurnModel, messages: messages, tools: HOLLY_TOOLS, tool_choice: "auto", temperature: 0.2 }),
 				});
 				if (!resp.ok) { throw new Error("LM Studio " + resp.status + " " + resp.statusText); }
 				const data = await resp.json();
@@ -4191,6 +4300,7 @@ btnHome.addEventListener("click", () => {
 				}
 				const finalText = msg.content || "(no reply)";
 				conversationHistory.push({ role: "assistant", content: finalText });
+				hollySaveChat();
 				addJarvisMessage(finalText, false);
 				break;
 			}
