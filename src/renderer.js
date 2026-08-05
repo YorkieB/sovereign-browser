@@ -33,26 +33,61 @@ const LLM_MODEL = "qwen2.5-vl-7b-instruct-abliterated";
 // HOLLY, done.
 let hollyAgentModel = LLM_MODEL;
 let hollyVisionModel = LLM_MODEL;
-(async function hollyPickModels() {
+let hollyModelIds = [];
+async function hollyPickModels() {
 	try {
 		const resp = await fetch(OPENAI_BASE + "/models");
-		if (!resp.ok) { return; }
-		const data = await resp.json();
-		const ids = (data.data || []).map((mm) => mm.id);
-		const pick = (patterns) => {
-			for (const p of patterns) { const hit = ids.find((id) => p.test(id)); if (hit) { return hit; } }
-			return null;
-		};
-		const agent = pick([/qwen3(?!.*(vl|embed))/i, /gemma-?4/i, /glm/i, /mistral-?small/i, /qwen3(?!.*embed)/i, /qwen2\.5(?!.*(vl|embed)).*instruct/i]);
-		if (agent) { hollyAgentModel = agent; }
-		const vision = pick([/qwen3.*vl/i, /vl|vision/i]);
-		if (vision) { hollyVisionModel = vision; }
-		console.log("[Holly] brains - agent:", hollyAgentModel, "| vision:", hollyVisionModel);
-		try { globalThis.electronAPI.invoke("sb:log", "[Holly] brains - agent:", hollyAgentModel, "| vision:", hollyVisionModel); } catch (err) { /* log only */ }
+		if (resp.ok) {
+			const data = await resp.json();
+			hollyModelIds = (data.data || []).map((mm) => mm.id);
+		}
 	} catch (err) {
-		console.warn("[Holly] model pick failed, using defaults:", err.message);
+		console.warn("[Holly] model list failed, keeping last known:", err.message);
 	}
-})();
+	const ids = hollyModelIds;
+	const pick = (patterns) => {
+		for (const p of patterns) { const hit = ids.find((id) => p.test(id)); if (hit) { return hit; } }
+		return null;
+	};
+	hollyAgentModel = pick([/qwen3(?!.*(vl|embed))/i, /gemma-?4/i, /glm/i, /mistral-?small/i, /qwen3(?!.*embed)/i, /qwen2\.5(?!.*(vl|embed)).*instruct/i]) || LLM_MODEL;
+	hollyVisionModel = pick([/qwen3.*vl/i, /vl|vision/i]) || LLM_MODEL;
+	const oAgent = localStorage.getItem("holly.agentModel");
+	const oVision = localStorage.getItem("holly.visionModel");
+	if (oAgent && oAgent !== "auto" && ids.includes(oAgent)) { hollyAgentModel = oAgent; }
+	if (oVision && oVision !== "auto" && ids.includes(oVision)) { hollyVisionModel = oVision; }
+	console.log("[Holly] brains - agent:", hollyAgentModel, "| vision:", hollyVisionModel);
+	try { globalThis.electronAPI.invoke("sb:log", "[Holly] brains - agent:", hollyAgentModel, "| vision:", hollyVisionModel); } catch (err) { /* log only */ }
+	hollyRefreshModelUI();
+}
+function hollyRefreshModelUI() {
+	const line = document.getElementById("holly-brains-now");
+	if (line) { line.textContent = "Brains now - agent: " + hollyAgentModel + " | vision: " + hollyVisionModel; }
+	for (const kind of ["agent", "vision"]) {
+		const sel = document.getElementById("holly-" + kind + "-select");
+		if (!sel) { continue; }
+		const stored = localStorage.getItem("holly." + kind + "Model") || "auto";
+		sel.innerHTML = "";
+		const auto = document.createElement("option");
+		auto.value = "auto";
+		auto.textContent = "Auto (recommended)";
+		sel.appendChild(auto);
+		for (const id of hollyModelIds) {
+			if (/embed/i.test(id)) { continue; }
+			const opt = document.createElement("option");
+			opt.value = id;
+			opt.textContent = id;
+			sel.appendChild(opt);
+		}
+		sel.value = hollyModelIds.includes(stored) ? stored : "auto";
+	}
+}
+hollyPickModels();
+const hollyAgentSel = document.getElementById("holly-agent-select");
+if (hollyAgentSel) { hollyAgentSel.addEventListener("change", () => { localStorage.setItem("holly.agentModel", hollyAgentSel.value); hollyPickModels(); }); }
+const hollyVisionSel = document.getElementById("holly-vision-select");
+if (hollyVisionSel) { hollyVisionSel.addEventListener("change", () => { localStorage.setItem("holly.visionModel", hollyVisionSel.value); hollyPickModels(); }); }
+const hollyModelsRefresh = document.getElementById("holly-models-refresh");
+if (hollyModelsRefresh) { hollyModelsRefresh.addEventListener("click", () => { hollyPickModels(); }); }
 const OPENAI_API_KEY = "lm-studio"; // LM Studio ignores the value, header must exist
 // ===========================================================================
 /* eslint-disable no-undef, no-unused-vars, no-console */ // [NRS-1301]
