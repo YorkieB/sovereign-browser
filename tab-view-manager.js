@@ -285,8 +285,15 @@ function createTabViewManager(win, opts) {
     if (!entry) { return false; }
     tabsById.delete(id);
     wcIdToTabId.delete(entry.wc.id);
-    try { win.contentView.removeChildView(entry.view); } catch (err) {
-      console.warn('[tabviews] removeChildView failed for tab', id, '-', err.message);
+    if (win.isDestroyed()) {
+      // The window (and its whole view tree) is already gone - there is
+      // nothing left to remove, and calling removeChildView here is exactly
+      // the case that produced a misleading "failed" warning.
+      console.log('[tabviews] tab', id, 'view already gone with the window - skipping removeChildView');
+    } else {
+      try { win.contentView.removeChildView(entry.view); } catch (err) {
+        console.warn('[tabviews] removeChildView failed for tab', id, '-', err.message);
+      }
     }
     try { entry.wc.close(); } catch (err) {
       console.warn('[tabviews] webContents.close failed for tab', id, '-', err.message);
