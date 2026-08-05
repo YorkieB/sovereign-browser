@@ -43,11 +43,12 @@ let hollyVisionModel = LLM_MODEL;
 			for (const p of patterns) { const hit = ids.find((id) => p.test(id)); if (hit) { return hit; } }
 			return null;
 		};
-		const agent = pick([/qwen3(?!.*(vl|embed))/i, /gemma-?4/i, /glm/i, /mistral-?small/i, /qwen2\.5(?!.*(vl|embed)).*instruct/i]);
+		const agent = pick([/qwen3(?!.*(vl|embed))/i, /gemma-?4/i, /glm/i, /mistral-?small/i, /qwen3(?!.*embed)/i, /qwen2\.5(?!.*(vl|embed)).*instruct/i]);
 		if (agent) { hollyAgentModel = agent; }
-		const vision = pick([/vl|vision/i]);
+		const vision = pick([/qwen3.*vl/i, /vl|vision/i]);
 		if (vision) { hollyVisionModel = vision; }
 		console.log("[Holly] brains - agent:", hollyAgentModel, "| vision:", hollyVisionModel);
+		try { globalThis.electronAPI.invoke("sb:log", "[Holly] brains - agent:", hollyAgentModel, "| vision:", hollyVisionModel); } catch (err) { /* log only */ }
 	} catch (err) {
 		console.warn("[Holly] model pick failed, using defaults:", err.message);
 	}
