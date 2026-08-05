@@ -133,7 +133,7 @@ const OPENAI_API_KEY = "lm-studio"; // LM Studio ignores the value, header must 
 	const btnForward = document.getElementById("btn-forward"); // [NRS-1303] Forward navigation button
 	const btnReload = document.getElementById("btn-reload"); // [NRS-1303] Reload page button
 const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home button
-	const btnNewWindow = document.getElementById("btn-new-window"); // [NRS-1303] New window button
+	const btnNewWindow = null; // [SovereignBrowser] New Window removed pending true multi-window support (per-sender-window tab-IPC refactor); HOLLY is single-window for now
 	const btnNewIncognito = null; // [SovereignBrowser] Incognito removed - every HOLLY tab is already a private, non-persistent session
 	const btnNewTab = document.getElementById("btn-new-tab"); // [NRS-1303] New tab button
 	const btnBookmark = document.getElementById("btn-bookmark"); // [NRS-1303] Bookmark button
@@ -6437,7 +6437,7 @@ omnibox.addEventListener("input", (e) => {
 		const actionMap = {
 			// [NRS-1301]
 			"new-tab": () => createTab(DEFAULT_HOME), // [NRS-1301]
-			"new-window": () => {
+			"new-window": () => { // [SovereignBrowser] unreachable: New Window removed from all menus; kept as no-op guard
 				// [NRS-1301]
 				try {
 					// [NRS-1301]
