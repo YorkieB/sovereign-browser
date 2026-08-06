@@ -157,3 +157,7 @@ Commit: -  Status: success
 ### 2026-08-06T15:11:55+01:00 — 074
 Instruction: Add Sandbox-First config to .onecommit.json: sandboxRoot and requireSandboxFor (hooks, watchdog-scripts, git-mutation, filesystem-mutation, automation, service-control, generated-code), leaving the existing verify block unchanged
 Commit: 18958bb29f0516d4d757f083043a06a1c9458222  Status: success
+
+### 2026-08-06T15:18:24+01:00 — 076
+Instruction: Update agent-preflight to read sandboxRoot and requireSandboxFor from .onecommit.json and report sandbox readiness - missing sandboxRoot or _results are warnings, invalid .onecommit.json remains a hard failure, existing checks unchanged
+Commit: 284698c30af7691fe0b417eda5687a3841a3bfed  Status: success
