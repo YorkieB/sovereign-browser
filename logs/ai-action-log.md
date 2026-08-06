@@ -161,3 +161,7 @@ Commit: 18958bb29f0516d4d757f083043a06a1c9458222  Status: success
 ### 2026-08-06T15:18:24+01:00 — 076
 Instruction: Update agent-preflight to read sandboxRoot and requireSandboxFor from .onecommit.json and report sandbox readiness - missing sandboxRoot or _results are warnings, invalid .onecommit.json remains a hard failure, existing checks unchanged
 Commit: 284698c30af7691fe0b417eda5687a3841a3bfed  Status: success
+
+### 2026-08-06T15:27:35+01:00 — 078
+Instruction: Update audit-actions to read sandboxRoot/requireSandboxFor from .onecommit.json and report readiness, and to verify any sandboxResult reference in the JSONL log points to a file that actually exists on disk - missing sandboxRoot/_results are warnings, a missing referenced sandboxResult file is a hard failure, invalid .onecommit.json remains a hard failure, not every action is required to have a sandboxResult
+Commit: 3ef24a1883f93c45bcc7a948224cd85b7c1d0117  Status: success
