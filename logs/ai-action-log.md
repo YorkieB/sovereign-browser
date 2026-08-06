@@ -129,3 +129,7 @@ Commit: 85698bf14a7b823cb48faabd4f944de45c6894b7  Status: success
 ### 2026-08-06T14:03:38+01:00 — 060
 Instruction: Add scripts/audit-actions.mjs - a read-only drift audit checking JSONL validity, logged-commit resolution, unlogged-commit detection against a recent window with merge/protected-path exemptions explained not silently ignored, tree cleanliness, .onecommit.json, safety scripts, checkpoint tag well-formedness, and dashboard port state
 Commit: a3d1461629ce2e2a0fa9298185284250b0eda276  Status: success
+
+### 2026-08-06T14:10:52+01:00 — 062
+Instruction: Wire drift audit into normal usage: npm run audit-actions script, plus README documentation on when to run it, PASS/FAIL meaning, what it detects, and how it complements agent-preflight (before vs after/between work)
+Commit: 96d4460325bd938a36cb591c5f6b7df94c4c5a0e  Status: success
