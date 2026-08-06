@@ -65,3 +65,7 @@ Commit: 703e87706c0e71c855d2f1da9dae9c2936624fa3  Status: success
 ### 2026-08-06T09:41:12+01:00 — 026
 Instruction: Create a harmless dummy change (checkpoints/revert-test-2026-08-05.txt) specifically to prove the real revert engine end-to-end on a real, disposable commit
 Commit: d1eb9ebb6e79729bbe39738e727969562c388c36  Status: success
+
+### 2026-08-06T09:45:56+01:00 — 028
+Instruction: Revert the harmless Action 026 test commit using scripts/ai-revert execute, to prove the real revert engine end-to-end against the real repo
+Commit: 928188bf17c7976c12eed1d7ec871df2ad141a70  Status: success
