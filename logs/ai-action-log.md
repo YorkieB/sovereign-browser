@@ -153,3 +153,7 @@ Commit: -  Status: success
 ### 2026-08-06T15:03:08+01:00 — 072
 Instruction: Create the permanent Sandbox-First root on the PC: C:\YorkieB\_sandbox\, C:\YorkieB\_sandbox\_results\, and a README.md explaining the convention, result-file template, and the two exact greppable marker lines
 Commit: -  Status: success
+
+### 2026-08-06T15:11:55+01:00 — 074
+Instruction: Add Sandbox-First config to .onecommit.json: sandboxRoot and requireSandboxFor (hooks, watchdog-scripts, git-mutation, filesystem-mutation, automation, service-control, generated-code), leaving the existing verify block unchanged
+Commit: 18958bb29f0516d4d757f083043a06a1c9458222  Status: success
