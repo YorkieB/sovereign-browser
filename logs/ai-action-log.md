@@ -121,3 +121,7 @@ Commit: 29861e0be062b9399935cc4e5edc66d6289aab53  Status: success
 ### 2026-08-06T13:47:45+01:00 — 056
 Instruction: Add scripts/agent-preflight.mjs - a read-only watchdog that loudly reports PREFLIGHT: PASS or PREFLIGHT: FAIL with specific reasons, checking git-repo status, branch/upstream/ahead-behind, tree cleanliness, .onecommit.json validity, action log validity, safety-script presence, .gitignore protected paths, and dashboard port status
 Commit: ca6274f6f63c66625fe7d42c8183c10f2b7fbce3  Status: success
+
+### 2026-08-06T13:54:03+01:00 — 058
+Instruction: Wire agent-preflight into normal usage: npm run agent-preflight script, plus README documentation on when/why to run it, what PASS/FAIL mean, that it applies generally not just to the browser, and the logs/ vs .gitignore protection note
+Commit: 85698bf14a7b823cb48faabd4f944de45c6894b7  Status: success
