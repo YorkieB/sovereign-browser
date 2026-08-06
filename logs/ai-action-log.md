@@ -69,3 +69,7 @@ Commit: d1eb9ebb6e79729bbe39738e727969562c388c36  Status: success
 ### 2026-08-06T09:45:56+01:00 — 028
 Instruction: Revert the harmless Action 026 test commit using scripts/ai-revert execute, to prove the real revert engine end-to-end against the real repo
 Commit: 928188bf17c7976c12eed1d7ec871df2ad141a70  Status: success
+
+### 2026-08-06T10:32:28+01:00 — 030
+Instruction: Add the first read-only local revert dashboard - scripts/revert-dashboard.mjs, GET / only, wraps node scripts/ai-revert list mode, no mutation capability
+Commit: 3f59a75b0c26b45dc6b687bb9e4325f21b0842cc  Status: success
