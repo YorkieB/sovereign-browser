@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 // revert-dashboard.mjs — read-only, localhost-only view of scripts/ai-revert.
 //
-// Two routes, both GET, both read-only:
-//   GET /                 -> node scripts/ai-revert            (list)
-//   GET /inspect/<target> -> node scripts/ai-revert <target>   (inspect)
-// Nothing else exists. No POST handler anywhere, no execute route, no plan
-// route. This file never calls ai-revert's execute mode, and never calls
-// git directly at all - it only displays text that ai-revert already
-// produced, for exactly the two read-only CLI modes above.
+// Three routes, all GET, all read-only:
+//   GET /                 -> node scripts/ai-revert               (list)
+//   GET /inspect/<target> -> node scripts/ai-revert <target>      (inspect)
+//   GET /plan/<target>    -> node scripts/ai-revert plan <target> (dry-run plan)
+// Nothing else exists. No POST handler anywhere, no execute route, no
+// revert button. This file never calls ai-revert's execute mode, and never
+// calls git directly at all - it only displays text that ai-revert already
+// produced, for exactly the three read-only CLI modes above.
 //
 // Usage (run from the repo root, same convention as every other script here):
 //   node scripts/revert-dashboard.mjs
@@ -54,8 +55,30 @@ function linkifyListOutput(escapedText) {
 	return out;
 }
 
-function renderPage(title, bodyHtml, showBackLink) {
+// Shared by /inspect/<target> and /plan/<target>: decode, then validate
+// against the same strict pattern for both routes.
+function parseTarget(pathname, prefix) {
+	const raw = pathname.slice(prefix.length);
+	let target;
+	try {
+		target = decodeURIComponent(raw);
+	} catch {
+		return { ok: false };
+	}
+	if (!TARGET_PATTERN.test(target)) {
+		return { ok: false };
+	}
+	return { ok: true, target };
+}
+
+function badTarget(res) {
+	res.writeHead(400, { "Content-Type": "text/plain" });
+	res.end("400 Bad Request - target must be a simple action id or commit-like hash (letters/digits only, max 40 chars).");
+}
+
+function renderPage(title, bodyHtml, showBackLink, extraLinksHtml) {
 	const back = showBackLink ? '<p><a href="/">&larr; back to list</a></p>' : "";
+	const extra = extraLinksHtml || "";
 	return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -73,6 +96,7 @@ function renderPage(title, bodyHtml, showBackLink) {
 <h1>${escapeHtml(title)}</h1>
 <p class="note">Read only. No revert button here or anywhere in this build - nothing on this page can change anything.</p>
 ${back}
+${extra}
 <pre>${bodyHtml}</pre>
 </body>
 </html>`;
@@ -97,30 +121,35 @@ function handleRequest(req, res) {
 	}
 
 	if (pathname.startsWith("/inspect/")) {
-		const raw = pathname.slice("/inspect/".length);
-		let target;
-		try {
-			target = decodeURIComponent(raw);
-		} catch {
-			res.writeHead(400, { "Content-Type": "text/plain" });
-			res.end("400 Bad Request - malformed target.");
+		const parsed = parseTarget(pathname, "/inspect/");
+		if (!parsed.ok) {
+			badTarget(res);
 			return;
 		}
-		if (!TARGET_PATTERN.test(target)) {
-			res.writeHead(400, { "Content-Type": "text/plain" });
-			res.end(
-				"400 Bad Request - target must be a simple action id or commit-like hash (letters/digits only, max 40 chars).",
-			);
-			return;
-		}
+		const { target } = parsed;
 		const text = runAiRevert([target]);
+		const safeTarget = escapeHtml(target);
+		const planLink = `<p><a href="/plan/${safeTarget}">view dry-run plan for ${safeTarget}</a></p>`;
 		res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-		res.end(renderPage(`Inspect: ${target}`, escapeHtml(text), true));
+		res.end(renderPage(`Inspect: ${target}`, escapeHtml(text), true, planLink));
+		return;
+	}
+
+	if (pathname.startsWith("/plan/")) {
+		const parsed = parseTarget(pathname, "/plan/");
+		if (!parsed.ok) {
+			badTarget(res);
+			return;
+		}
+		const { target } = parsed;
+		const text = runAiRevert(["plan", target]);
+		res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+		res.end(renderPage(`Plan: ${target}`, escapeHtml(text), true));
 		return;
 	}
 
 	res.writeHead(404, { "Content-Type": "text/plain" });
-	res.end("404 Not Found - only GET / and GET /inspect/<target> exist in this build.");
+	res.end("404 Not Found - only GET /, GET /inspect/<target>, and GET /plan/<target> exist in this build.");
 }
 
 const server = createServer((req, res) => {
@@ -149,6 +178,6 @@ server.on("error", (err) => {
 
 server.listen(PORT, HOST, () => {
 	console.log(
-		`[revert-dashboard] Listening on http://${HOST}:${PORT}/ (read-only, GET / and GET /inspect/<target> only)`,
+		`[revert-dashboard] Listening on http://${HOST}:${PORT}/ (read-only: GET /, GET /inspect/<target>, GET /plan/<target>)`,
 	);
 });
