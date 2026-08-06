@@ -125,3 +125,7 @@ Commit: ca6274f6f63c66625fe7d42c8183c10f2b7fbce3  Status: success
 ### 2026-08-06T13:54:03+01:00 — 058
 Instruction: Wire agent-preflight into normal usage: npm run agent-preflight script, plus README documentation on when/why to run it, what PASS/FAIL mean, that it applies generally not just to the browser, and the logs/ vs .gitignore protection note
 Commit: 85698bf14a7b823cb48faabd4f944de45c6894b7  Status: success
+
+### 2026-08-06T14:03:38+01:00 — 060
+Instruction: Add scripts/audit-actions.mjs - a read-only drift audit checking JSONL validity, logged-commit resolution, unlogged-commit detection against a recent window with merge/protected-path exemptions explained not silently ignored, tree cleanliness, .onecommit.json, safety scripts, checkpoint tag well-formedness, and dashboard port state
+Commit: a3d1461629ce2e2a0fa9298185284250b0eda276  Status: success
