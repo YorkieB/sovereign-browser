@@ -113,3 +113,7 @@ Commit: 721ef7d824348bc31f3da2cdc45198f580ea1bbb  Status: success
 ### 2026-08-06T12:53:44+01:00 — 052
 Instruction: Push completed Phase 5 dashboard revert work to origin/main
 Commit: -  Status: success
+
+### 2026-08-06T13:38:03+01:00 — 054
+Instruction: Make scripts/ai-revert read post-revert verification commands from .onecommit.json instead of hardcoding npm run check / npm run smoke - Phase 6's smallest first action, prerequisite for a portable bootstrap kit
+Commit: 29861e0be062b9399935cc4e5edc66d6289aab53  Status: success
