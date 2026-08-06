@@ -137,3 +137,7 @@ Commit: 96d4460325bd938a36cb591c5f6b7df94c4c5a0e  Status: success
 ### 2026-08-06T14:23:34+01:00 — 064
 Instruction: Add tracked Git hook watchdog files (.githooks/commit-msg, pre-commit, pre-push) plus scripts/install-githooks.mjs, without enabling hooks - core.hooksPath left untouched
 Commit: d2f3c49eb83b03cf9805ed6d717a19fde7e67fbb  Status: success
+
+### 2026-08-06T14:32:30+01:00 — 066
+Instruction: Wire the Git hook installer into normal usage without enabling hooks: npm run install-githooks and npm run enable-githooks scripts, plus README docs covering that hooks live in .githooks/, are inactive until core.hooksPath is set, install-githooks is dry-run only, what enabling activates, that --no-verify bypasses hooks so audit-actions still matters, and that pre-push is slower since it runs check and smoke
+Commit: 886dec24acf515038e9e5b49a235d9c85f042ace  Status: success
