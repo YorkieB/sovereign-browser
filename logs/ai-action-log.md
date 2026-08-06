@@ -165,3 +165,7 @@ Commit: 284698c30af7691fe0b417eda5687a3841a3bfed  Status: success
 ### 2026-08-06T15:27:35+01:00 — 078
 Instruction: Update audit-actions to read sandboxRoot/requireSandboxFor from .onecommit.json and report readiness, and to verify any sandboxResult reference in the JSONL log points to a file that actually exists on disk - missing sandboxRoot/_results are warnings, a missing referenced sandboxResult file is a hard failure, invalid .onecommit.json remains a hard failure, not every action is required to have a sandboxResult
 Commit: 3ef24a1883f93c45bcc7a948224cd85b7c1d0117  Status: success
+
+### 2026-08-06T15:36:55+01:00 — 080
+Instruction: Document Sandbox-First as part of the One Change, One Commit watchdog system in README: root/results paths, risk categories, result-file marker lines, agent-preflight/audit-actions integration, promotion discipline, and the broader (not browser-only) framing
+Commit: 10fd7bce2a97ec64ea26dde51912df90513f02d4  Status: success
