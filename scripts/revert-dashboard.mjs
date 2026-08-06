@@ -5,14 +5,18 @@
 //   GET  /                 -> node scripts/ai-revert               (list)
 //   GET  /inspect/<target> -> node scripts/ai-revert <target>      (inspect)
 //   GET  /plan/<target>    -> node scripts/ai-revert plan <target> (dry-run plan)
-//   POST /execute/<target> -> STUB ONLY. Reads the typed confirmation and
-//                             always replies "execution is not enabled" -
-//                             it never calls ai-revert execute or any git
-//                             command. This proves the confirmation UI and
-//                             wording ahead of a later action that wires
-//                             this route to the real, gated CLI execute path.
-// No other route exists. This file never calls ai-revert's execute mode,
-// and never calls git directly at all.
+//   POST /execute/<target> -> requires confirm=REVERT exactly. If it
+//                             matches, calls the real CLI:
+//                               node scripts/ai-revert execute <target>
+//                             feeding it "REVERT" on stdin, exactly as a
+//                             person would type at the interactive prompt.
+//                             Every refusal check (protected paths, merge
+//                             commits, no-commit entries, dirty tree,
+//                             revert-in-progress) still lives entirely
+//                             inside ai-revert - this file does not
+//                             re-implement or bypass any of it, and never
+//                             calls git directly itself.
+// No other route exists.
 //
 // Usage (run from the repo root, same convention as every other script here):
 //   node scripts/revert-dashboard.mjs
@@ -47,6 +51,24 @@ function runAiRevert(args) {
 			(err.stderr ? err.stderr.toString() : "") +
 			(err.message || "");
 		return `[revert-dashboard] scripts/ai-revert did not run cleanly:\n${out}`;
+	}
+}
+
+// The ONLY place in this file that ever invokes ai-revert's execute mode.
+// Only reached after this file's own confirm===REVERT check has already
+// passed. Feeds "REVERT\n" to stdin, mirroring the interactive CLI prompt.
+function runAiRevertExecute(target) {
+	try {
+		return execFileSync("node", ["scripts/ai-revert", "execute", target], {
+			encoding: "utf-8",
+			input: "REVERT\n",
+		});
+	} catch (err) {
+		const out =
+			(err.stdout ? err.stdout.toString() : "") +
+			(err.stderr ? err.stderr.toString() : "") +
+			(err.message || "");
+		return `[revert-dashboard] scripts/ai-revert execute did not run cleanly:\n${out}`;
 	}
 }
 
@@ -99,21 +121,20 @@ function readBody(req, maxBytes) {
 	});
 }
 
-// The confirmation form itself. Only shown for a plan that ai-revert judged
-// eligible (detected from its own output text, not re-decided here). Posts
-// to /execute/<target>, which in this build only ever replies that
-// execution isn't enabled - see handleRequest below.
+// Only shown for a plan that ai-revert judged eligible (detected from its
+// own output text, not re-decided here). Posts to /execute/<target>, which
+// requires this exact string before calling the real CLI execute path.
 function confirmationFormHtml(target) {
 	const safeTarget = escapeHtml(target);
 	return `
 <div class="confirm-box">
   <h2>Revert ${safeTarget}</h2>
-  <p class="note">Execution is <strong>not enabled</strong> in this build. This form proves the confirmation wording only - submitting it cannot revert anything.</p>
+  <p class="note">This calls the real CLI path directly: <code>node scripts/ai-revert execute ${safeTarget}</code>. Typing anything other than <code>REVERT</code> exactly cancels - nothing is attempted. Typing <code>REVERT</code> attempts a real revert, subject to every refusal check ai-revert itself enforces (protected paths, merge commits, dirty tree, and so on).</p>
   <form method="POST" action="/execute/${safeTarget}">
     <label>Type <code>REVERT</code> to confirm:<br>
       <input type="text" name="confirm" autocomplete="off">
     </label>
-    <button type="submit">Request revert (not yet enabled)</button>
+    <button type="submit">Request revert</button>
   </form>
 </div>`;
 }
@@ -126,7 +147,7 @@ function renderPage(title, bodyHtml, showBackLink, extraLinksHtml, afterBodyHtml
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>${escapeHtml(title)} - revert dashboard (read-only)</title>
+<title>${escapeHtml(title)} - revert dashboard</title>
 <style>
   body { font-family: system-ui, sans-serif; margin: 2rem; background: #111; color: #eee; }
   h1 { font-size: 1.2rem; }
@@ -141,7 +162,7 @@ function renderPage(title, bodyHtml, showBackLink, extraLinksHtml, afterBodyHtml
 </head>
 <body>
 <h1>${escapeHtml(title)}</h1>
-<p class="note">No revert button here or anywhere in this build can actually change anything.</p>
+<p class="note">Localhost only. All refusal rules (protected paths, merge commits, dirty tree, no-commit entries) are enforced by scripts/ai-revert itself, not by this page.</p>
 ${back}
 ${extra}
 <pre>${bodyHtml}</pre>
@@ -157,7 +178,7 @@ async function handleRequest(req, res) {
 	if (pathname.startsWith("/execute/")) {
 		if (req.method !== "POST") {
 			res.writeHead(405, { "Content-Type": "text/plain" });
-			res.end("405 Method Not Allowed - /execute/<target> only accepts POST, and it does not execute anything in this build.");
+			res.end("405 Method Not Allowed - /execute/<target> only accepts POST.");
 			return;
 		}
 		const parsed = parseTarget(pathname, "/execute/");
@@ -177,26 +198,27 @@ async function handleRequest(req, res) {
 		const params = new URLSearchParams(body);
 		const confirm = (params.get("confirm") || "").trim();
 
-		// STUB: this never calls ai-revert execute, git revert, or anything
-		// else that mutates state, no matter what was submitted above.
-		let message;
 		if (confirm !== "REVERT") {
-			message =
+			const message =
 				`Typed confirmation was "${confirm || "(empty)"}", not exactly "REVERT". ` +
-				`Execution is not enabled in this build regardless, so nothing would have happened either way.`;
-		} else {
-			message =
-				`Confirmation "REVERT" received for ${target}. ` +
-				`Execution is not enabled in this build. No revert has been run, no files were changed, nothing was committed.`;
+				`No revert was attempted - ai-revert execute was never called.`;
+			res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+			res.end(renderPage(`Execute request: ${target}`, escapeHtml(message), true));
+			return;
 		}
+
+		// Confirmation matched - the one and only path in this file that
+		// calls the real CLI execute mode. Whatever ai-revert decides
+		// (refuse, conflict, or a real revert) is shown verbatim below.
+		const result = runAiRevertExecute(target);
 		res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-		res.end(renderPage(`Execute request: ${target}`, escapeHtml(message), true));
+		res.end(renderPage(`Execute: ${target}`, escapeHtml(result), true));
 		return;
 	}
 
 	if (req.method !== "GET") {
 		res.writeHead(405, { "Content-Type": "text/plain" });
-		res.end("405 Method Not Allowed - only GET is accepted here, except the non-executing POST /execute/<target> stub.");
+		res.end("405 Method Not Allowed - only GET is accepted here, except POST /execute/<target>.");
 		return;
 	}
 
@@ -266,6 +288,6 @@ server.on("error", (err) => {
 
 server.listen(PORT, HOST, () => {
 	console.log(
-		`[revert-dashboard] Listening on http://${HOST}:${PORT}/ (GET /, /inspect/<target>, /plan/<target>; POST /execute/<target> is a non-executing stub)`,
+		`[revert-dashboard] Listening on http://${HOST}:${PORT}/ (GET /, /inspect/<target>, /plan/<target>; POST /execute/<target> calls the real CLI, gated by ai-revert's own refusal checks)`,
 	);
 });
