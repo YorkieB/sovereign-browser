@@ -117,3 +117,7 @@ Commit: -  Status: success
 ### 2026-08-06T13:38:03+01:00 — 054
 Instruction: Make scripts/ai-revert read post-revert verification commands from .onecommit.json instead of hardcoding npm run check / npm run smoke - Phase 6's smallest first action, prerequisite for a portable bootstrap kit
 Commit: 29861e0be062b9399935cc4e5edc66d6289aab53  Status: success
+
+### 2026-08-06T13:47:45+01:00 — 056
+Instruction: Add scripts/agent-preflight.mjs - a read-only watchdog that loudly reports PREFLIGHT: PASS or PREFLIGHT: FAIL with specific reasons, checking git-repo status, branch/upstream/ahead-behind, tree cleanliness, .onecommit.json validity, action log validity, safety-script presence, .gitignore protected paths, and dashboard port status
+Commit: ca6274f6f63c66625fe7d42c8183c10f2b7fbce3  Status: success
