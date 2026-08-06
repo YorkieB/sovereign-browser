@@ -61,3 +61,7 @@ Commit: c51fe04c1af755254ad4ade041e7e92c5b523bb3  Status: success
 ### 2026-08-05T23:23:56+01:00 — 024
 Instruction: Add confirmed git-revert execution (execute mode) to scripts/ai-revert - reuses plan-mode eligibility checks, adds dirty-tree/revert-in-progress refusal, requires typed REVERT, runs check+smoke after, judged by output text
 Commit: 703e87706c0e71c855d2f1da9dae9c2936624fa3  Status: success
+
+### 2026-08-06T09:41:12+01:00 — 026
+Instruction: Create a harmless dummy change (checkpoints/revert-test-2026-08-05.txt) specifically to prove the real revert engine end-to-end on a real, disposable commit
+Commit: d1eb9ebb6e79729bbe39738e727969562c388c36  Status: success
