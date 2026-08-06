@@ -11,5 +11,15 @@
       "successText": "[smoke] PASS:",
       "failureText": "[smoke] FAIL:"
     }
+  ],
+  "sandboxRoot": "C:\\YorkieB\\_sandbox\\",
+  "requireSandboxFor": [
+    "hooks",
+    "watchdog-scripts",
+    "git-mutation",
+    "filesystem-mutation",
+    "automation",
+    "service-control",
+    "generated-code"
   ]
 }
