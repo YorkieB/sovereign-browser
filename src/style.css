@@ -21,6 +21,75 @@ body {
 	min-height: 0;
 } /* [NRS-1301] */
 
+/* Menu Bar */ /* [NRS-1301] */
+#menu-bar {
+	display: flex;
+	gap: 0;
+	padding: 0;
+	border-bottom: 1px solid #ddd;
+	background: #f6f6f6;
+	height: 30px;
+	align-items: stretch;
+} /* [NRS-1301] */
+.menu-item {
+	position: relative;
+	display: flex;
+	align-items: stretch;
+} /* [NRS-1301] */
+.menu-label {
+	border: none;
+	background: transparent;
+	padding: 0 12px;
+	cursor: pointer;
+	font-size: 13px;
+	white-space: nowrap;
+	display: flex;
+	align-items: center;
+	color: #333;
+} /* [NRS-1301] */
+.menu-label:hover {
+	background: #e8e8e8;
+} /* [NRS-1301] */
+.menu-dropdown {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	background: white;
+	border: 1px solid #ccc;
+	border-radius: 2px;
+	min-width: 180px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	display: none;
+	flex-direction: column;
+	z-index: 1000;
+} /* [NRS-1301] */
+.menu-item:hover .menu-dropdown {
+	display: flex;
+} /* [NRS-1301] */
+.menu-option {
+	padding: 8px 16px;
+	cursor: pointer;
+	font-size: 13px;
+	user-select: none;
+	white-space: nowrap;
+} /* [NRS-1301] */
+.menu-option:hover {
+	background: #f0f0f0;
+} /* [NRS-1301] */
+.menu-separator {
+	height: 1px;
+	background: #e0e0e0;
+	margin: 4px 0;
+} /* [NRS-1301] */
+#bookmarks-menu-list {
+	max-height: 300px;
+	overflow-y: auto;
+} /* [NRS-1301] */
+#bookmarks-menu-list .menu-option {
+	padding: 6px 16px;
+	font-size: 12px;
+} /* [NRS-1301] */
+
 #toolbar {
 	display: flex;
 	align-items: center;
@@ -1536,6 +1605,34 @@ body.jarvis-open #content {
 	background: linear-gradient(180deg, #764ba2 0%, #667eea 100%); /* [NRS-1301] */
 } /* [NRS-1301] */
 
+/* Menu Dropdown Animation */ /* [NRS-1301] */
+.menu-dropdown {
+	/* [NRS-1301] */
+	opacity: 0; /* [NRS-1301] */
+	transform: translateY(-10px); /* [NRS-1301] */
+	transition:
+		opacity 0.2s ease,
+		transform 0.2s ease; /* [NRS-1301] */
+	pointer-events: none; /* [NRS-1301] */
+} /* [NRS-1301] */
+
+.menu-item:hover .menu-dropdown {
+	/* [NRS-1301] */
+	opacity: 1; /* [NRS-1301] */
+	transform: translateY(0); /* [NRS-1301] */
+	pointer-events: auto; /* [NRS-1301] */
+} /* [NRS-1301] */
+
+.menu-option {
+	/* [NRS-1301] */
+	transition: all 0.15s ease; /* [NRS-1301] */
+} /* [NRS-1301] */
+
+.menu-option:hover {
+	/* [NRS-1301] */
+	padding-left: 20px; /* [NRS-1301] */
+} /* [NRS-1301] */
+
 /* Selection Highlight */ /* [NRS-1301] */
 ::selection {
 	/* [NRS-1301] */
@@ -2241,6 +2338,7 @@ textarea:focus {
 
 /* [SovereignBrowser] Native chrome menus (WCV mode): the DOM dropdowns are
    never shown - hover included - so the layout pump has nothing to inset. */
+body.native-menus .menu-dropdown,
 body.native-menus #overflow-menu {
 	display: none !important;
 }
