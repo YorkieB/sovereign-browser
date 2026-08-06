@@ -10,7 +10,9 @@
 		"smoke": "electron . --smoke-test",
 		"dashboard": "node scripts/revert-dashboard.mjs",
 		"agent-preflight": "node scripts/agent-preflight.mjs",
-		"audit-actions": "node scripts/audit-actions.mjs"
+		"audit-actions": "node scripts/audit-actions.mjs",
+		"install-githooks": "node scripts/install-githooks.mjs",
+		"enable-githooks": "node scripts/install-githooks.mjs --enable"
 	},
 	"author": "",
 	"license": "GPL-3.0",
