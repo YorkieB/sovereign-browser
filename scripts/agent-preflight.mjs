@@ -15,7 +15,8 @@
 //
 // Usage: node scripts/agent-preflight.mjs   (run from the repo root)
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, statSync } from "node:fs";
+import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createServer } from "node:http";
 
@@ -37,10 +38,20 @@ function git(args) {
 	return execFileSync("git", args, { encoding: "utf-8" }).trim();
 }
 
+function isDirectory(p) {
+	try {
+		return statSync(p).isDirectory();
+	} catch {
+		return false;
+	}
+}
+
 // Independent, deliberately duplicated copy of the same validation
 // ai-revert applies to .onecommit.json - not imported from ai-revert,
 // since ai-revert is not being touched for this action. Small, simple
 // schema; the duplication is a known, acceptable tradeoff, not an oversight.
+// Returns the parsed config on success too, so callers can read fields
+// (like the Sandbox-First ones) beyond just "verify".
 function checkOneCommitConfig() {
 	let raw;
 	try {
@@ -62,7 +73,7 @@ function checkOneCommitConfig() {
 			return { ok: false, detail: `verify[${i}] must have string name/command/successText` };
 		}
 	}
-	return { ok: true, detail: `valid, ${parsed.verify.length} verify command(s) configured` };
+	return { ok: true, detail: `valid, ${parsed.verify.length} verify command(s) configured`, config: parsed };
 }
 
 function checkActionLog() {
@@ -191,10 +202,49 @@ async function main() {
 		);
 	}
 
-	// .onecommit.json
+	// .onecommit.json, plus the Sandbox-First fields it may carry. Invalid
+	// or missing config is still a hard failure - the sandbox checks below
+	// only run once the config itself is confirmed valid, and are warnings
+	// even then, since a missing sandbox doesn't make THIS repo unsafe by
+	// itself - it only matters once risky logic/side-effect work is about
+	// to happen, not for every small edit.
 	const configCheck = checkOneCommitConfig();
 	if (configCheck.ok) {
 		pass(".onecommit.json", configCheck.detail);
+
+		const sandboxRoot = configCheck.config.sandboxRoot;
+		const requireSandboxFor = configCheck.config.requireSandboxFor;
+
+		if (typeof sandboxRoot !== "string" || sandboxRoot.length === 0) {
+			warn(
+				"sandbox",
+				"no sandboxRoot configured in .onecommit.json - sandbox-first testing can't be verified until one is set; only matters before risky logic/side-effect work, not every small edit",
+			);
+		} else if (!isDirectory(sandboxRoot)) {
+			warn(
+				"sandbox",
+				`sandboxRoot "${sandboxRoot}" is configured but does not exist yet - create it before risky logic/side-effect work that should be sandbox-tested first`,
+			);
+		} else {
+			pass("sandbox root", `${sandboxRoot} exists`);
+			const resultsDir = path.join(sandboxRoot, "_results");
+			if (isDirectory(resultsDir)) {
+				pass("sandbox results", `${resultsDir} exists`);
+			} else {
+				warn(
+					"sandbox",
+					`sandboxRoot exists but its _results folder ("${resultsDir}") is missing - sandbox test results have nowhere durable to be written yet`,
+				);
+			}
+		}
+
+		if (!Array.isArray(requireSandboxFor)) {
+			warn("sandbox", "requireSandboxFor is missing or not an array in .onecommit.json - no categories are currently declared as requiring sandbox-first testing");
+		} else if (requireSandboxFor.length === 0) {
+			warn("sandbox", "requireSandboxFor is an empty array - no categories currently require sandbox-first testing");
+		} else {
+			pass("sandbox categories", `requireSandboxFor: ${requireSandboxFor.join(", ")}`);
+		}
 	} else {
 		fail(".onecommit.json", configCheck.detail);
 	}
