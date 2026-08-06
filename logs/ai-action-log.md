@@ -77,3 +77,7 @@ Commit: 3f59a75b0c26b45dc6b687bb9e4325f21b0842cc  Status: success
 ### 2026-08-06T10:40:45+01:00 — 032
 Instruction: Add a read-only candidate-detail route (GET /inspect/<target>) to the dashboard, wrapping node scripts/ai-revert <target>, with strict target validation and links from the list view
 Commit: e8de99f17084da4f92206011242c0d217c13b19f  Status: success
+
+### 2026-08-06T10:47:58+01:00 — 034
+Instruction: Add a read-only dashboard plan view (GET /plan/<target>), wrapping node scripts/ai-revert plan <target>, plus a link from the inspect view; reused inspect's target validation via a shared parseTarget helper
+Commit: 49ff858bccc199d6d1db62b1aae912fc796a7107  Status: success
