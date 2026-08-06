@@ -172,7 +172,6 @@ const btnHome = document.getElementById("btn-home"); // [SovereignBrowser] Home 
 	const historyList = document.getElementById("history-list"); // [NRS-1302]
 	const btnClearHistory = document.getElementById("btn-clear-history"); // [NRS-1303]
 	const jarvisSwirlOverlay = document.getElementById("jarvis-swirl-overlay"); // [NRS-1001]
-	const bookmarksMenuList = document.getElementById("bookmarks-menu-list"); // [NRS-1302]
 	const tabContextMenu = document.getElementById("tab-context-menu"); // [NRS-1302]
 	const webviewContextMenu = document.getElementById("webview-context-menu"); // [NRS-1302]
 	const findBar = document.getElementById("find-bar"); // [NRS-1302]
@@ -2081,17 +2080,8 @@ webview.src = url; // [NRS-1301]
 		const items = [];
 		__nativeMenuTargets = [];
 		for (const child of container.children) {
-			if (child.classList.contains("ovf-sep") || child.classList.contains("menu-separator")) {
+			if (child.classList.contains("ovf-sep")) {
 				if (items.length && !items[items.length - 1].sep) { items.push({ sep: true }); }
-				continue;
-			}
-			if (child.id === "bookmarks-menu-list") {
-				for (const opt of child.querySelectorAll(".menu-option")) {
-					const t = (opt.textContent || "").trim();
-					if (!t) { continue; }
-					items.push({ i: __nativeMenuTargets.length, label: t });
-					__nativeMenuTargets.push(opt);
-				}
 				continue;
 			}
 			const target = rowButtonSel ? child.querySelector(rowButtonSel) : child;
@@ -6550,7 +6540,6 @@ omnibox.addEventListener("input", (e) => {
 					// [NRS-1301]
 					await globalThis.electronAPI.bookmarks.add({ title, url }); // [NRS-1301]
 					renderBookmarks(); // [NRS-1301]
-					renderBookmarksMenu(); // [NRS-1301]
 				} catch {} // [NRS-1301]
 			}, // [NRS-1301]
 			about: () => {
@@ -6572,36 +6561,6 @@ omnibox.addEventListener("input", (e) => {
 		if (handler) handler(); // [NRS-1301]
 	} // [NRS-1301]
 
-	async function renderBookmarksMenu() {
-		// [NRS-1301]
-		try {
-			// [NRS-1301]
-			const list = await globalThis.electronAPI.bookmarks.get(); // [NRS-1301]
-			bookmarksMenuList.innerHTML = ""; // [NRS-1301]
-			for (const b of list.slice().reverse()) {
-				// [NRS-1301]
-				const div = document.createElement("div"); // [NRS-1301]
-				div.className = "menu-option"; // [NRS-1301]
-				div.textContent = b.title; // [NRS-1301]
-				div.addEventListener("click", (e) => {
-					// [NRS-1301]
-					e.stopPropagation(); // [NRS-1301]
-					const tab = tabs.find(t => t.id === activeTabId); // [RESTORED]
-					if (tab) tab.webview.src = b.url; // [NRS-1301]
-				}); // [NRS-1301]
-				bookmarksMenuList.appendChild(div); // [NRS-1301]
-			} // [NRS-1301]
-		} catch {} // [NRS-1301]
-	} // [NRS-1301]
-
-	document.querySelectorAll(".menu-option").forEach((option) => {
-		// [NRS-1301]
-		option.addEventListener("click", (e) => {
-			// [NRS-1301]
-			const action = e.target.dataset.action; // [NRS-1301]
-			if (action) handleMenuAction(action); // [NRS-1301]
-		}); // [NRS-1301]
-	}); // [NRS-1301]
 
 	// Initialize: restore session or create first tab // [NRS-1301]
 	const sessionRestored = restoreSession(); // [NRS-1301]
@@ -6610,7 +6569,6 @@ omnibox.addEventListener("input", (e) => {
 		createTab(DEFAULT_HOME); // [NRS-1301]
 	} // [NRS-1301]
 	renderHistory(); // [NRS-1301]
-	renderBookmarksMenu(); // [NRS-1301]
 	updateAutoDevtoolsButton(); // [NRS-1301]
 
 	// Save session periodically and on window close // [NRS-1301]
