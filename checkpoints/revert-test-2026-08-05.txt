@@ -1,8 +1,0 @@
-This file exists purely to give the AI revert engine (scripts/ai-revert) a
-harmless, disposable target to revert for real - Action 026 in the AI
-action log.
-
-It touches no browser runtime code and no protected path. Reverting it
-should do nothing but remove this file.
-
-Created: 2026-08-06
