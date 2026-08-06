@@ -169,3 +169,7 @@ Commit: 3ef24a1883f93c45bcc7a948224cd85b7c1d0117  Status: success
 ### 2026-08-06T15:36:55+01:00 — 080
 Instruction: Document Sandbox-First as part of the One Change, One Commit watchdog system in README: root/results paths, risk categories, result-file marker lines, agent-preflight/audit-actions integration, promotion discipline, and the broader (not browser-only) framing
 Commit: 10fd7bce2a97ec64ea26dde51912df90513f02d4  Status: success
+
+### 2026-08-06T15:55:30+01:00 — 082
+Instruction: Push Sandbox-First watchdog integration to origin/main
+Commit: -  Status: success
