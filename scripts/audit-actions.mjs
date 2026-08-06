@@ -14,7 +14,8 @@
 //
 // Usage: node scripts/audit-actions.mjs   (run from the repo root)
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, statSync } from "node:fs";
+import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createServer } from "node:http";
 
@@ -42,6 +43,14 @@ function info(label, detail) {
 
 function git(args) {
 	return execFileSync("git", args, { encoding: "utf-8" }).trim();
+}
+
+function isDirectory(p) {
+	try {
+		return statSync(p).isDirectory();
+	} catch {
+		return false;
+	}
 }
 
 // --- independent, deliberately duplicated copies of small ai-revert logic -
@@ -99,6 +108,8 @@ function readActionLog() {
 	return { ok: true, byCommit, byActionId, lineCount: lines.length };
 }
 
+// Returns the parsed config on success too, so callers can read fields
+// (like the Sandbox-First ones) beyond just "verify".
 function checkOneCommitConfig() {
 	let raw;
 	try {
@@ -115,7 +126,7 @@ function checkOneCommitConfig() {
 	if (!Array.isArray(parsed.verify)) {
 		return { ok: false, detail: `must have a "verify" array (found ${typeof parsed.verify})` };
 	}
-	return { ok: true, detail: `valid, ${parsed.verify.length} verify command(s) configured` };
+	return { ok: true, detail: `valid, ${parsed.verify.length} verify command(s) configured`, config: parsed };
 }
 
 function checkDashboardPort() {
@@ -205,6 +216,26 @@ async function main() {
 	} else {
 		for (const e of missingCommits) {
 			fail("logged commit missing", `action ${e.action_id} points to ${e.commit} which no longer resolves in Git`);
+		}
+	}
+
+	// 2b. sandboxResult reference integrity. This does NOT require every
+	// action to have one - that would be policy, not something mechanically
+	// knowable from the log alone. It only checks that whichever references
+	// DO exist point to a real file, the same way commit references are
+	// checked just above.
+	const sandboxResultEntries = [...log.byActionId.values()].filter((e) => e.sandboxResult);
+	if (sandboxResultEntries.length === 0) {
+		pass("sandbox result references", "none found in the action log yet");
+	} else {
+		const missingResults = sandboxResultEntries.filter((e) => !existsSync(e.sandboxResult));
+		if (missingResults.length === 0) {
+			const noun = sandboxResultEntries.length === 1 ? "entry" : "entries";
+			pass("sandbox result references", `${sandboxResultEntries.length} ${noun} reference a sandboxResult file, all resolve on disk`);
+		} else {
+			for (const e of missingResults) {
+				fail("sandbox result missing", `action ${e.action_id} references sandboxResult "${e.sandboxResult}" which does not exist on disk`);
+			}
 		}
 	}
 
@@ -312,10 +343,40 @@ async function main() {
 		}
 	}
 
-	// 9. .onecommit.json
+	// 9. .onecommit.json, plus the Sandbox-First fields it may carry. Invalid
+	// or missing config is still a hard failure - the sandbox checks below
+	// only run once the config itself is confirmed valid, and are warnings
+	// even then, since a missing sandbox doesn't fail the whole audit by
+	// itself - it only matters once risky logic/side-effect work is about
+	// to happen, not for every small edit.
 	const configCheck = checkOneCommitConfig();
 	if (configCheck.ok) {
 		pass(".onecommit.json", configCheck.detail);
+
+		const sandboxRoot = configCheck.config.sandboxRoot;
+		const requireSandboxFor = configCheck.config.requireSandboxFor;
+
+		if (typeof sandboxRoot !== "string" || sandboxRoot.length === 0) {
+			warn("sandbox", "no sandboxRoot configured in .onecommit.json");
+		} else if (!isDirectory(sandboxRoot)) {
+			warn("sandbox", `sandboxRoot "${sandboxRoot}" is configured but does not exist`);
+		} else {
+			pass("sandbox root", `${sandboxRoot} exists`);
+			const resultsDir = path.join(sandboxRoot, "_results");
+			if (isDirectory(resultsDir)) {
+				pass("sandbox results", `${resultsDir} exists`);
+			} else {
+				warn("sandbox", `sandboxRoot exists but its _results folder ("${resultsDir}") is missing`);
+			}
+		}
+
+		if (!Array.isArray(requireSandboxFor)) {
+			warn("sandbox", "requireSandboxFor is missing or not an array in .onecommit.json");
+		} else if (requireSandboxFor.length === 0) {
+			warn("sandbox", "requireSandboxFor is an empty array - no categories currently require sandbox-first testing");
+		} else {
+			pass("sandbox categories", `requireSandboxFor: ${requireSandboxFor.join(", ")}`);
+		}
 	} else {
 		fail(".onecommit.json", configCheck.detail);
 	}
