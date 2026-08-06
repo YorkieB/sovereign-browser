@@ -19,6 +19,8 @@ npm start
 ## Development
 One change = one commit; split stacked work with `git add -p`.
 
+Before any AI coding or automation-codebase work begins, run `npm run agent-preflight`. It checks whether this repo is actually safe to work in right now — git status, `.onecommit.json`, the action log, the safety scripts themselves, `.gitignore`, and whether anything's already listening on the dashboard's port — and ends with exactly one of two lines: `PREFLIGHT: PASS`, meaning it's fine to proceed, or `PREFLIGHT: FAIL` with the specific reasons listed underneath. A FAIL means stop and resolve what's listed before making any edits, not push through it. This applies to any real coding project or automation codebase generally, not just this browser — Holly, Sovereign, YorkieGPT scripts and training work, KM Records automation, n8n workflows, and similar tracked repos. One detail worth knowing going in: `logs/` is tracked on purpose, not gitignored — an append-only log needs real git history to be worth anything — so its protection comes from `ai-revert`'s own protected-path refusal, not from `.gitignore`. Only `.env` and `backups/` are meant to be gitignored.
+
 Before starting a change, run `bash scripts/ai-checkpoint "label"` to mark a restore point. It commits whatever's currently staged/unstaged first (so the checkpoint reflects a real, complete state), tags it `checkpoint-<timestamp>`, and prints the resulting commit hash. If there's nothing to commit, it says so and tags the current HEAD as-is rather than creating an empty commit.
 
 Actions and their outcomes are recorded in `logs/ai-action-log.md` / `logs/ai-action-log.jsonl` via `scripts/log-action.mjs` — append-only, never edited by hand.
