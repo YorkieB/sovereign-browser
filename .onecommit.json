@@ -1,0 +1,15 @@
+{
+  "verify": [
+    {
+      "name": "check",
+      "command": "npm run check",
+      "successText": "CHECK-PASSED"
+    },
+    {
+      "name": "smoke",
+      "command": "npm run smoke",
+      "successText": "[smoke] PASS:",
+      "failureText": "[smoke] FAIL:"
+    }
+  ]
+}

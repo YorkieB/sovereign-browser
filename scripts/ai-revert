@@ -1,12 +1,19 @@
 #!/usr/bin/env node
 // ai-revert — read-only inspector + dry-run planner + confirmed execute mode.
 //
+// Post-revert verification is config-driven: reads .onecommit.json at the
+// repo root for the list of verify commands (name, command, successText,
+// optional failureText). Nothing here hardcodes npm/check/smoke - that was
+// this repo's config, not a property of this script. If .onecommit.json is
+// missing or invalid, execute mode refuses before ever running git revert.
+//
 // Git subcommands this file calls: log, rev-list, diff, show, rev-parse,
 // status, revert. `revert` only runs in execute mode, only after every
-// refusal check passes AND the user has typed REVERT at an interactive
-// prompt. There is no git reset, git stash, or git tag -d anywhere in this
-// file, and no code path writes to logs/ - the log entry for an execute run
-// is a separate, later step, same as every other action in this project.
+// refusal check (including the config check) passes AND the user has typed
+// REVERT at an interactive prompt. There is no git reset, git stash, or git
+// tag -d anywhere in this file, and no code path writes to logs/ - the log
+// entry for an execute run is a separate, later step, same as every other
+// action in this project.
 //
 // Usage:
 //   node scripts/ai-revert                       -> list recent candidates
@@ -20,6 +27,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
 const JSONL_PATH = "logs/ai-action-log.jsonl";
+const ONECOMMIT_CONFIG_PATH = ".onecommit.json";
 const PROTECTED_PREFIXES = ["logs/", ".env", "backups/"];
 const LIST_COUNT = 20;
 
@@ -50,6 +58,38 @@ function readActionLog() {
 		if (entry.commit) byCommit.set(entry.commit, entry);
 	}
 	return { byCommit, byActionId };
+}
+
+// Loads and validates .onecommit.json. Returns { ok: true, verify: [...] }
+// or { ok: false, reason }. An explicitly-empty verify array is valid (ok:
+// true, verify: []) and is distinct from a missing/invalid file (ok: false)
+// - the two must never be conflated, since one means "no checks by design"
+// and the other means "the config itself is broken".
+function loadOneCommitConfig() {
+	let raw;
+	try {
+		raw = readFileSync(ONECOMMIT_CONFIG_PATH, "utf-8");
+	} catch (err) {
+		return { ok: false, reason: `${ONECOMMIT_CONFIG_PATH} not found or unreadable: ${err.message}` };
+	}
+	let parsed;
+	try {
+		parsed = JSON.parse(raw);
+	} catch (err) {
+		return { ok: false, reason: `${ONECOMMIT_CONFIG_PATH} is not valid JSON: ${err.message}` };
+	}
+	if (!Array.isArray(parsed.verify)) {
+		return { ok: false, reason: `${ONECOMMIT_CONFIG_PATH} must have a "verify" array (found ${typeof parsed.verify})` };
+	}
+	for (const [i, step] of parsed.verify.entries()) {
+		if (!step || typeof step.name !== "string" || typeof step.command !== "string" || typeof step.successText !== "string") {
+			return { ok: false, reason: `${ONECOMMIT_CONFIG_PATH} verify[${i}] must have string "name", "command", and "successText"` };
+		}
+		if (step.failureText !== undefined && typeof step.failureText !== "string") {
+			return { ok: false, reason: `${ONECOMMIT_CONFIG_PATH} verify[${i}].failureText must be a string if present` };
+		}
+	}
+	return { ok: true, verify: parsed.verify };
 }
 
 function recentCommits(count) {
@@ -216,9 +256,18 @@ function formatPlan(target) {
 	}
 	console.log("\n--- dry-run plan (nothing below this line has been run) ---");
 	console.log(`Would run:      git revert --no-edit ${hash}`);
-	console.log("Would then run: npm run check");
-	console.log("Would then run: npm run smoke");
-	console.log("Pass/fail for both would be judged by output text - 'CHECK-PASSED' for check, '[smoke] PASS:' / '[smoke] FAIL:' for smoke - never by exit codes.");
+	const config = loadOneCommitConfig();
+	if (!config.ok) {
+		console.log(`Would then run: (cannot determine - ${ONECOMMIT_CONFIG_PATH} problem: ${config.reason})`);
+		console.log("[ai-revert] Execute mode would REFUSE this target because of the config problem above, before ever reverting.");
+	} else if (config.verify.length === 0) {
+		console.log(`Would then run: (nothing - ${ONECOMMIT_CONFIG_PATH} explicitly configures zero verification commands)`);
+	} else {
+		for (const step of config.verify) {
+			console.log(`Would then run: ${step.command}  (${step.name})`);
+		}
+		console.log("Pass/fail would be judged by each command's configured successText/failureText in its output - never by exit codes.");
+	}
 	console.log("\n[ai-revert] Dry-run only - no git revert, reset, stash, or commit has been executed.");
 }
 
@@ -247,6 +296,37 @@ function runCapture(cmd, args) {
 	}
 }
 
+// Runs every configured verify step and judges each by its own configured
+// successText/failureText - never by exit code. An explicitly-empty list
+// is a pass by design (the config said so), with a clear note explaining
+// why, not silence.
+function runVerifySteps(verifySteps) {
+	if (verifySteps.length === 0) {
+		console.log(`[ai-revert] No verification commands are configured in ${ONECOMMIT_CONFIG_PATH} (verify: []) - treating as pass by design.`);
+		return { allPassed: true, results: [] };
+	}
+	const results = [];
+	let allPassed = true;
+	for (const step of verifySteps) {
+		console.log(`\n[ai-revert] Verifying: ${step.command}  (${step.name})`);
+		const parts = step.command.trim().split(/\s+/).filter(Boolean);
+		const cmd = parts[0];
+		const args = parts.slice(1);
+		const r = runCapture(cmd, args);
+		console.log(r.out);
+		const successFound = r.out.includes(step.successText);
+		const failureFound = step.failureText ? r.out.includes(step.failureText) : false;
+		const passed = successFound && !failureFound;
+		if (!passed) allPassed = false;
+		results.push({ name: step.name, passed, successFound, failureFound });
+		console.log(
+			`${step.name}: ${successFound ? `"${step.successText}" found` : `"${step.successText}" NOT found`}` +
+				(step.failureText ? `, ${failureFound ? `"${step.failureText}" present` : `"${step.failureText}" absent`}` : ""),
+		);
+	}
+	return { allPassed, results };
+}
+
 async function formatExecute(target) {
 	const r = resolveTarget(target);
 	if (!r.ok) {
@@ -266,6 +346,15 @@ async function formatExecute(target) {
 
 	const elig = eligibility(hash, logEntry);
 	console.log(`\nFiles touched: ${elig.files.join(", ") || "(none detected)"}`);
+
+	// Verification config is checked before every other refusal check: if
+	// we can't verify a revert afterward, there's no point evaluating
+	// whether this specific target would otherwise be eligible.
+	const config = loadOneCommitConfig();
+	if (!config.ok) {
+		console.log(`\n[ai-revert] EXECUTE REFUSED: ${ONECOMMIT_CONFIG_PATH} problem - ${config.reason}`);
+		return;
+	}
 
 	if (logEntry && logEntry.revertable === false) {
 		console.log(`\n[ai-revert] EXECUTE REFUSED: log entry for action ${logEntry.action_id} is explicitly marked revertable:false.`);
@@ -292,8 +381,13 @@ async function formatExecute(target) {
 
 	console.log("\n--- plan (nothing has been run yet) ---");
 	console.log(`Would run:      git revert --no-edit ${hash}`);
-	console.log("Would then run: npm run check");
-	console.log("Would then run: npm run smoke");
+	if (config.verify.length === 0) {
+		console.log(`Would then run: (nothing - ${ONECOMMIT_CONFIG_PATH} explicitly configures zero verification commands)`);
+	} else {
+		for (const step of config.verify) {
+			console.log(`Would then run: ${step.command}  (${step.name})`);
+		}
+	}
 
 	const confirmed = await confirmRevert(hash, logEntry);
 	if (!confirmed) {
@@ -318,20 +412,9 @@ async function formatExecute(target) {
 	const newHash = git(["rev-parse", "HEAD"]);
 	console.log(`[ai-revert] Revert commit created: ${newHash}`);
 
-	console.log("\n[ai-revert] Verifying: npm run check");
-	const checkResult = runCapture("npm", ["run", "check"]);
-	console.log(checkResult.out);
-	const checkPassed = checkResult.out.includes("CHECK-PASSED");
+	const verification = runVerifySteps(config.verify);
 
-	console.log("[ai-revert] Verifying: npm run smoke");
-	const smokeResult = runCapture("npm", ["run", "smoke"]);
-	console.log(smokeResult.out);
-	const smokePassed = smokeResult.out.includes("[smoke] PASS:") && !smokeResult.out.includes("[smoke] FAIL:");
-
-	console.log(`\ncheck: ${checkPassed ? "CHECK-PASSED found" : "CHECK-PASSED NOT found"}`);
-	console.log(`smoke: ${smokePassed ? "[smoke] PASS: found, no FAIL" : "[smoke] PASS: missing or [smoke] FAIL: present"}`);
-
-	if (checkPassed && smokePassed) {
+	if (verification.allPassed) {
 		console.log(`\n[ai-revert] Verification passed (judged by output text, not exit codes). Revert commit: ${newHash}`);
 	} else {
 		console.log("\n[ai-revert] Verification FAILED or inconclusive after the revert.");
