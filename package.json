@@ -7,7 +7,8 @@
 		"start": "electron .",
 		"build": "electron-builder --win",
 		"check": "node --check main.js && node --check preload.js && node --check src/renderer.js && echo CHECK-PASSED",
-		"smoke": "electron . --smoke-test"
+		"smoke": "electron . --smoke-test",
+		"dashboard": "node scripts/revert-dashboard.mjs"
 	},
 	"author": "",
 	"license": "GPL-3.0",
