@@ -1,0 +1,51 @@
+#!/bin/sh
+# pre-push — runs the full verification ladder before allowing a push:
+# agent-preflight, audit-actions, check, smoke. Refuses the push unless
+# every expected success marker is present in each command's own output -
+# never judged by exit codes, matching this whole project's approach. Does
+# not push anything itself, including tags - it only decides whether to
+# let git's own push proceed.
+
+FAIL=0
+
+echo "pre-push: running npm run agent-preflight..."
+PREFLIGHT_OUT=$(npm run agent-preflight 2>&1)
+if ! echo "$PREFLIGHT_OUT" | grep -q "PREFLIGHT: PASS"; then
+	echo "pre-push: agent-preflight did not report PREFLIGHT: PASS. Push refused." >&2
+	echo "$PREFLIGHT_OUT" >&2
+	FAIL=1
+fi
+
+echo "pre-push: running npm run audit-actions..."
+AUDIT_OUT=$(npm run audit-actions 2>&1)
+if ! echo "$AUDIT_OUT" | grep -q "AUDIT: PASS"; then
+	echo "pre-push: audit-actions did not report AUDIT: PASS. Push refused." >&2
+	echo "$AUDIT_OUT" >&2
+	FAIL=1
+fi
+
+echo "pre-push: running npm run check..."
+CHECK_OUT=$(npm run check 2>&1)
+if ! echo "$CHECK_OUT" | grep -q "CHECK-PASSED"; then
+	echo "pre-push: check did not report CHECK-PASSED. Push refused." >&2
+	echo "$CHECK_OUT" >&2
+	FAIL=1
+fi
+
+echo "pre-push: running npm run smoke..."
+SMOKE_OUT=$(npm run smoke 2>&1)
+if ! echo "$SMOKE_OUT" | grep -q '\[smoke\] PASS:'; then
+	echo "pre-push: smoke did not report [smoke] PASS:. Push refused." >&2
+	FAIL=1
+elif echo "$SMOKE_OUT" | grep -q '\[smoke\] FAIL:'; then
+	echo "pre-push: smoke reported [smoke] FAIL:. Push refused." >&2
+	FAIL=1
+fi
+
+if [ "$FAIL" -ne 0 ]; then
+	echo "pre-push: one or more checks failed - see above. Push blocked." >&2
+	exit 1
+fi
+
+echo "pre-push: all checks passed. Proceeding with push."
+exit 0

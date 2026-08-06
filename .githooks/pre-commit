@@ -1,0 +1,58 @@
+#!/bin/sh
+# pre-commit — lightweight watchdog. Blocks on invalid staged JSONL or on
+# mixing protected and non-protected paths in the same commit; .env and
+# backups/ should never be staged at all. Warns, does not block, on an
+# unusually large staged file count. Deliberately does NOT run npm run
+# smoke here - too heavy for something that runs on every commit; the full
+# verification ladder lives in pre-push instead.
+
+STAGED=$(git diff --cached --name-only)
+
+# 1. If logs/ai-action-log.jsonl is staged, the staged (index) content must
+# be valid JSONL, checked as what will actually be committed - not
+# necessarily the same as the working-tree copy.
+if echo "$STAGED" | grep -qx 'logs/ai-action-log.jsonl'; then
+	TMP=$(mktemp)
+	git show :logs/ai-action-log.jsonl >"$TMP" 2>/dev/null
+	if ! node -e '
+		const fs = require("fs");
+		const raw = fs.readFileSync(process.argv[1], "utf-8");
+		const lines = raw.split("\n").filter((l) => l.trim().length > 0);
+		for (const [i, line] of lines.entries()) {
+			try { JSON.parse(line); } catch (err) {
+				console.error("pre-commit: staged logs/ai-action-log.jsonl line " + (i + 1) + " is invalid JSON: " + err.message);
+				process.exit(1);
+			}
+		}
+	' "$TMP"; then
+		rm -f "$TMP"
+		exit 1
+	fi
+	rm -f "$TMP"
+fi
+
+# 2. .env / backups/ should never be staged at all.
+ENV_OR_BACKUPS=$(echo "$STAGED" | grep -E '^(\.env|backups/)' || true)
+if [ -n "$ENV_OR_BACKUPS" ]; then
+	echo "pre-commit: .env or backups/ path(s) are staged - these should never be committed:" >&2
+	echo "$ENV_OR_BACKUPS" >&2
+	exit 1
+fi
+
+# 3. logs/ mixed with non-protected paths in the same commit is blocked;
+# a pure logs/-only commit (the normal "append Action N" shape) is fine.
+PROTECTED=$(echo "$STAGED" | grep -E '^logs/' || true)
+NON_PROTECTED=$(echo "$STAGED" | grep -vE '^logs/' || true)
+if [ -n "$PROTECTED" ] && [ -n "$NON_PROTECTED" ]; then
+	echo "pre-commit: this commit mixes logs/ with non-protected paths - keep log-append commits separate:" >&2
+	echo "$STAGED" >&2
+	exit 1
+fi
+
+# 4. Warn, don't block, on unusually large commits.
+STAGED_COUNT=$(echo "$STAGED" | grep -c . || true)
+if [ "$STAGED_COUNT" -gt 10 ]; then
+	echo "pre-commit: warning - $STAGED_COUNT files staged in one commit. Consider splitting." >&2
+fi
+
+exit 0

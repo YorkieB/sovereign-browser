@@ -1,0 +1,35 @@
+#!/bin/sh
+# commit-msg — rejects empty or obviously vague commit messages.
+#
+# Accepts this repo's normal patterns (action NNN: ..., Revert "action NNN:
+# ...", checkpoint: before action ...) but does not hard-require them - a
+# reasonably descriptive message in some other shape is fine too. This hook
+# only rejects the empty/vague end of the spectrum; it doesn't enforce one
+# specific convention as a universal law, since this kit is meant to travel
+# to other repos with their own conventions.
+#
+# Git passes the path to a temp file holding the message as $1.
+
+MSG_FILE="$1"
+SUBJECT=$(head -n 1 "$MSG_FILE" | sed 's/[[:space:]]*$//')
+
+if [ -z "$SUBJECT" ]; then
+	echo "commit-msg: empty commit message rejected." >&2
+	exit 1
+fi
+
+LOWER=$(echo "$SUBJECT" | tr '[:upper:]' '[:lower:]')
+for vague in update updates fix fixes wip misc changes stuff final; do
+	if [ "$LOWER" = "$vague" ]; then
+		echo "commit-msg: \"$SUBJECT\" is too vague on its own - say what changed." >&2
+		exit 1
+	fi
+done
+
+LEN=$(echo -n "$SUBJECT" | wc -c | tr -d ' ')
+if [ "$LEN" -lt 4 ]; then
+	echo "commit-msg: \"$SUBJECT\" is too short to be a real commit message." >&2
+	exit 1
+fi
+
+exit 0
