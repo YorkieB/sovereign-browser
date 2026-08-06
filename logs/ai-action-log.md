@@ -133,3 +133,7 @@ Commit: a3d1461629ce2e2a0fa9298185284250b0eda276  Status: success
 ### 2026-08-06T14:10:52+01:00 — 062
 Instruction: Wire drift audit into normal usage: npm run audit-actions script, plus README documentation on when to run it, PASS/FAIL meaning, what it detects, and how it complements agent-preflight (before vs after/between work)
 Commit: 96d4460325bd938a36cb591c5f6b7df94c4c5a0e  Status: success
+
+### 2026-08-06T14:23:34+01:00 — 064
+Instruction: Add tracked Git hook watchdog files (.githooks/commit-msg, pre-commit, pre-push) plus scripts/install-githooks.mjs, without enabling hooks - core.hooksPath left untouched
+Commit: d2f3c49eb83b03cf9805ed6d717a19fde7e67fbb  Status: success
