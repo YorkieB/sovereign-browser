@@ -105,3 +105,7 @@ Commit: 0fc5fe88a3ac563ff567f5b18b2120475036ac34  Status: success
 ### 2026-08-06T12:18:20+01:00 — 048
 Instruction: Prove the dashboard revert button end-to-end on the harmless Action 046 commit via the real HTTP flow: GET /plan/046, then POST /execute/046 with confirm=REVERT
 Commit: 01a42992cea4fe05c873990c7d8290f8b8285062  Status: success
+
+### 2026-08-06T12:47:22+01:00 — 050
+Instruction: Update README to document the now-proven dashboard revert button: list/inspect/plan/execute, localhost-only, typed REVERT required, same CLI path, refusal rules, check/smoke verification, text-not-exit-code judging, scratch-file hygiene, and the general (not browser-only) framing of the whole discipline
+Commit: 721ef7d824348bc31f3da2cdc45198f580ea1bbb  Status: success
