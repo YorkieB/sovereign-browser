@@ -109,3 +109,7 @@ Commit: 01a42992cea4fe05c873990c7d8290f8b8285062  Status: success
 ### 2026-08-06T12:47:22+01:00 — 050
 Instruction: Update README to document the now-proven dashboard revert button: list/inspect/plan/execute, localhost-only, typed REVERT required, same CLI path, refusal rules, check/smoke verification, text-not-exit-code judging, scratch-file hygiene, and the general (not browser-only) framing of the whole discipline
 Commit: 721ef7d824348bc31f3da2cdc45198f580ea1bbb  Status: success
+
+### 2026-08-06T12:53:44+01:00 — 052
+Instruction: Push completed Phase 5 dashboard revert work to origin/main
+Commit: -  Status: success
