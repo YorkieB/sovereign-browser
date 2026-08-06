@@ -177,3 +177,7 @@ Commit: -  Status: success
 ### 2026-08-06T16:46:31+01:00 — 084
 Instruction: Remove dead front-end remnants of the old DOM #menu-bar (markup removed in f1184d3): orphaned menu-bar CSS blocks, renderBookmarksMenu() and both call sites, the document-level .menu-option wiring loop, the bookmarks-menu-list fold-in branch and dead menu-separator check inside popupNativeMenu, and the bookmarksMenuList lookup. Live overflow menu, #tab-context-menu, #webview-context-menu, native menu handling, and nav buttons untouched.
 Commit: 7c07f8dc6b2fc2526b4a7f2d79e3d3c07644e8ef  Status: success
+
+### 2026-08-06T17:16:01+01:00 — 086
+Instruction: Revert action 084 (7c07f8d) as a user-directed diagnostic reset after a flicker report in the freshly launched post-084 instance. git revert only via scripts/ai-revert execute 084 with typed REVERT confirmation; no manual edits; logs untouched by the revert commit; Action 085 not reverted.
+Commit: 0eb6c4c110449d9a0a0a5810d08d1778f32b5cd9  Status: success
