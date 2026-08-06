@@ -1,9 +1,0 @@
-This file exists purely to give the revert dashboard (scripts/revert-dashboard.mjs)
-a harmless, disposable target to revert for real via the UI - Action 046 in
-the AI action log.
-
-It touches no browser runtime code and no protected path. Reverting it
-via the dashboard's typed-confirmation form should do nothing but remove
-this file.
-
-Created: 2026-08-06
