@@ -93,3 +93,7 @@ Commit: -  Status: success
 ### 2026-08-06T11:36:46+01:00 — 042
 Instruction: Add the dashboard revert-confirmation UI on the plan page (typed REVERT required) with a POST /execute/<target> stub that always refuses to execute - proves the UI/wording before any real execute route is wired up
 Commit: f1eb2c9b06fbd44dabd8ea8413ab113852b1bf59  Status: success
+
+### 2026-08-06T12:07:53+01:00 — 044
+Instruction: Enable dashboard POST /execute/<target> to call the real CLI (node scripts/ai-revert execute <target>) when confirm=REVERT exactly, tested against refusal/non-mutation cases only - no successful eligible revert performed in this action
+Commit: 80d237bc539aade2f9e0737b101b529e388ec1d6  Status: success
