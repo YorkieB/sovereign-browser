@@ -173,3 +173,7 @@ Commit: 10fd7bce2a97ec64ea26dde51912df90513f02d4  Status: success
 ### 2026-08-06T15:55:30+01:00 — 082
 Instruction: Push Sandbox-First watchdog integration to origin/main
 Commit: -  Status: success
+
+### 2026-08-06T16:46:31+01:00 — 084
+Instruction: Remove dead front-end remnants of the old DOM #menu-bar (markup removed in f1184d3): orphaned menu-bar CSS blocks, renderBookmarksMenu() and both call sites, the document-level .menu-option wiring loop, the bookmarks-menu-list fold-in branch and dead menu-separator check inside popupNativeMenu, and the bookmarksMenuList lookup. Live overflow menu, #tab-context-menu, #webview-context-menu, native menu handling, and nav buttons untouched.
+Commit: 7c07f8dc6b2fc2526b4a7f2d79e3d3c07644e8ef  Status: success
