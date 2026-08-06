@@ -89,3 +89,7 @@ Commit: 44cfcfdebab132d6c7527189b7568b8ce7936c56  Status: success
 ### 2026-08-06T11:15:22+01:00 — 038
 Instruction: Push safety-system branch history to origin/main
 Commit: -  Status: success
+
+### 2026-08-06T11:36:46+01:00 — 042
+Instruction: Add the dashboard revert-confirmation UI on the plan page (typed REVERT required) with a POST /execute/<target> stub that always refuses to execute - proves the UI/wording before any real execute route is wired up
+Commit: f1eb2c9b06fbd44dabd8ea8413ab113852b1bf59  Status: success
