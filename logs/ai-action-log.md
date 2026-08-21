@@ -201,3 +201,7 @@ Commit: 22b6714cee6b83a2112e6ad7ff9bb780682a580c  Status: success
 ### 2026-08-21T20:31:51+01:00 — 096
 Instruction: Wire the vault into main.js: instantiate VaultService against the profile directory and register the vault IPC channels behind an identity guard. No window yet, so no sender can be authorised.
 Commit: 819b558885bfc79228bf9950c57cb8f94f293cb8  Status: success
+
+### 2026-08-21T20:37:39+01:00 — 098
+Instruction: Clear the pre-existing 'No handler registered for tab:activate' defect recorded in Action 096, so it is not carried forward into the vault window work.
+Commit: df1d0c8497662bd90597ae8472a6d73e96002427  Status: success
