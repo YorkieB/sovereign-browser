@@ -221,3 +221,7 @@ Commit: 5e61943cceb3ce2648a903a00c2300681ed6d915  Status: success
 ### 2026-08-21T22:15:13+01:00 — 106
 Instruction: Promote the sandbox-proven page-integration layer into the HOLLY repo: origin matching, the page-facing vault surface, the page IPC, the page agent, and the save prompt. Files only - nothing imports or injects them yet.
 Commit: 4097596fced36af573754043f65cc32697d1ccfa  Status: success
+
+### 2026-08-21T22:23:55+01:00 — 108
+Instruction: Attach vault/page-preload.js to tab webContents so web pages can reach the narrow page-vault bridge. Non-incognito tabs only. Nothing answers the channels yet - the page IPC is registered in the next action.
+Commit: 46b9b1f936d05a8326579842ae19a57b12c0609b  Status: success
