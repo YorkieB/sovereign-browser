@@ -1,0 +1,74 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Save password</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; font: 14px/1.45 system-ui, sans-serif; color: #1c1c1c;
+         background: #fff; border: 1px solid #d8d5d0; border-radius: 12px;
+         box-shadow: 0 10px 30px rgba(0,0,0,.2); overflow: hidden;
+         -webkit-app-region: drag; user-select: none; }
+  .body { padding: 16px 18px 14px; }
+  h1 { margin: 0 0 6px; font-size: 15px; }
+  .host { font-weight: 600; }
+  .user { color: #4a4a4a; margin-top: 8px; font-size: 13px; }
+  .user span { font-weight: 600; color: #1c1c1c; }
+  .note { margin-top: 8px; font-size: 12px; color: #8a6d00; }
+  .actions { display: flex; gap: 8px; justify-content: flex-end;
+             padding: 12px 18px; background: #faf9f7; border-top: 1px solid #eceae5;
+             -webkit-app-region: no-drag; }
+  button { font: inherit; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+           border: 1px solid #d8d5d0; background: #fff; }
+  button:hover { background: #f2efe9; }
+  .primary { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+  .primary:hover { background: #1a43bd; }
+  .never { margin-right: auto; border: 0; background: none; color: #6b6b6b; }
+  .never:hover { background: none; text-decoration: underline; }
+</style>
+<body>
+  <div class="body">
+    <h1 id="title">Save password?</h1>
+    <div>Holly can store this in your vault for <span class="host" id="host">…</span>.</div>
+    <div class="user" id="userline"></div>
+    <div class="note" id="note" hidden>Your vault is locked - you will be asked to unlock it.</div>
+  </div>
+  <div class="actions">
+    <button class="never" id="never">Never for this site</button>
+    <button id="dismiss">Not now</button>
+    <button class="primary" id="save">Save</button>
+  </div>
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const res = await window.savePrompt.payload();
+  if (!res.ok) {
+    $('title').textContent = 'This request has expired.';
+    $('save').disabled = true;
+  } else {
+    const p = res.value;
+    $('host').textContent = p.host;
+    $('userline').innerHTML = p.username
+      ? 'Username: <span></span>'
+      : 'No username was detected.';
+    if (p.username) $('userline').querySelector('span').textContent = p.username;
+    if (p.action === 'update') {
+      $('title').textContent = 'Update saved password?';
+      $('save').textContent = 'Update';
+    }
+    if (p.needsUnlock) $('note').hidden = false;
+  }
+
+  const respond = (choice) => window.savePrompt.respond(choice);
+  $('save').addEventListener('click', () => respond('save'));
+  $('dismiss').addEventListener('click', () => respond('dismiss'));
+  $('never').addEventListener('click', () => respond('never'));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') respond('dismiss');
+    if (e.key === 'Enter') respond('save');
+  });
+
+  // Test hook: the harness drives the buttons without a real mouse. It can
+  // only do what a user could do, and cannot see a password because none is here.
+  window.__promptTest = {
+    payloadKeys: () => (res.ok ? Object.keys(res.value) : ['expired']),
+    click: (which) => { $(which).click(); return true; },
+  };
+</script>
