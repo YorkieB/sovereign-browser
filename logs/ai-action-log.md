@@ -225,3 +225,7 @@ Commit: 4097596fced36af573754043f65cc32697d1ccfa  Status: success
 ### 2026-08-21T22:23:55+01:00 — 108
 Instruction: Attach vault/page-preload.js to tab webContents so web pages can reach the narrow page-vault bridge. Non-incognito tabs only. Nothing answers the channels yet - the page IPC is registered in the next action.
 Commit: 46b9b1f936d05a8326579842ae19a57b12c0609b  Status: success
+
+### 2026-08-21T22:35:14+01:00 — 110
+Instruction: Wire page autofill into HOLLY: create the page-facing vault surface, register the pagevault IPC behind a tab-identity guard, inject the page agent into tabs, and hand save offers to a browser-drawn prompt. Completes the autofill sequence - the feature is live after this.
+Commit: ec93ec302b376d54f37dba61fa597534f36f85a5  Status: success
