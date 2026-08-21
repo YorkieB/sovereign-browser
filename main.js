@@ -1054,6 +1054,22 @@ app.on('web-contents-created', (_event, contents) => {
   });
 });
 
+// Opening the vault window from the chrome UI's overflow menu.
+//
+// Named holly:vault:* rather than vault:* on purpose: the vault:* channels are
+// the guarded surface that only the vault window may call. This one opens a
+// window and reveals nothing - no state, no entries, not even whether a vault
+// exists - so the chrome UI may call it. It is still restricted to HOLLY's own
+// UI: web content has no preload and cannot reach ipcRenderer at all, and the
+// vault window is refused because it already has a window.
+ipcMain.handle('holly:vault:open', (event) => {
+  if (VAULT_WINDOW_ID !== null && event.sender.id === VAULT_WINDOW_ID) {
+    return { ok: false, error: 'already the vault window' };
+  }
+  const win = openVaultWindow();
+  return { ok: Boolean(win) };
+});
+
 // [SovereignBrowser] Startup. This block was accidentally deleted by an earlier
 // edit and the file still passed `node --check`, because a main process with no
 // startup code is perfectly valid JavaScript - it just never opens a window.

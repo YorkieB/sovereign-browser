@@ -2110,6 +2110,17 @@ webview.src = url; // [NRS-1301]
 		document.body.classList.add("native-menus");
 		const ovfExt = document.getElementById("btn-ovf-extensions");
 		if (ovfExt) { ovfExt.addEventListener("click", () => { openExtensions(); }); }
+		// [SovereignBrowser] Keychain. The vault lives in its own window in its
+		// own session, so this only asks main to open it - the renderer never
+		// touches vault data and has no vault channels of its own.
+		const ovfKeychain = document.getElementById("btn-ovf-keychain");
+		if (ovfKeychain) {
+			ovfKeychain.addEventListener("click", () => {
+				globalThis.electronAPI.invoke("holly:vault:open").catch((err) => {
+					console.warn("[keychain] could not open the vault window:", err && err.message);
+				});
+			});
+		}
 		const puzzleBtn = document.getElementById("btn-extensions-bar");
 		if (puzzleBtn) {
 			puzzleBtn.addEventListener("click", async (e) => {
