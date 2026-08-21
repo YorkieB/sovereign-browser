@@ -922,6 +922,8 @@ async function setupChromeExtensions() {
 // authorised to call them - the correct state to be in between actions.
 let vaultService = null;
 let VAULT_WINDOW_ID = null;
+let pageVault = null;      // the narrow, page-facing surface
+let savePrompts = null;    // browser-drawn save prompts
 
 function isAuthorisedVaultSender(event) {
   if (VAULT_WINDOW_ID === null) return false;
@@ -932,8 +934,12 @@ function isAuthorisedVaultSender(event) {
 
 async function setupVault() {
   try {
-    const { VaultService } = await import('./vault/vault-service.mjs');
+    const { VaultService, generatePassword } = await import('./vault/vault-service.mjs');
     const { registerVaultIpc } = await import('./vault/vault-ipc.mjs');
+    const { createPageVault } = await import('./vault/page-vault.mjs');
+    const { registerPageVaultIpc } = await import('./vault/page-vault-ipc.mjs');
+    const { createSavePromptManager } = await import('./vault/save-prompt.mjs');
+
     vaultService = new VaultService({
       vaultPath: path.join(PROFILE_DIR, 'vault.json'),
       // Idle window only; the preference is not persisted yet, so this is the
@@ -942,11 +948,73 @@ async function setupVault() {
     });
     const channels = registerVaultIpc(vaultService, isAuthorisedVaultSender);
     console.log(`[Holly] Vault ready (${channels.length} channels, no authorised window yet). File: ${vaultService.path} - state: ${vaultService.state}`);
+
+    // --- page integration -------------------------------------------------
+    // Autofill is on for every site by default; "Never for this site" in the
+    // save prompt is the per-site opt-out.
+    pageVault = createPageVault({ service: vaultService, generate: generatePassword });
+    savePrompts = createSavePromptManager({
+      pageVault,
+      neverPath: path.join(PROFILE_DIR, 'never-save.json'),
+      onCommitted: (host) => console.log('[Holly] Vault: saved a credential for', host),
+      onError: (err) => console.warn('[Holly] Vault: save failed -', err.message),
+    });
+
+    const pageChannels = registerPageVaultIpc(
+      pageVault,
+      isAuthorisedTabSender,
+      (senderWc, origin, decision, credential) => {
+        savePrompts.offer(mainWindow(), origin, decision, credential);
+      },
+    );
+    console.log(`[Holly] Page autofill ready (${pageChannels.length} channels) - on by default for every site.`);
   } catch (err) {
     // A broken vault must not stop the browser from opening.
     vaultService = null;
+    pageVault = null;
+    savePrompts = null;
     console.error('[Holly] Vault setup failed, continuing without it:', err.message);
   }
+}
+
+// A page may use the vault only if the tab manager recognises its webContents
+// as a real tab. That is an exact answer rather than a guess: the vault window,
+// the chrome UI, the save prompt and anything else are all unknown to it and
+// therefore refused.
+function isAuthorisedTabSender(event) {
+  if (!tabViews) { return false; }
+  if (VAULT_WINDOW_ID !== null && event.sender.id === VAULT_WINDOW_ID) { return false; }
+  return tabViews.tabIdForWebContents(event.sender.id) !== null;
+}
+
+// The page agent, read once at startup. Injected per navigation rather than
+// bundled into the preload: it needs the DOM, and it must run in the page's own
+// world to see the page's forms.
+let PAGE_AGENT_SOURCE = null;
+function pageAgentSource() {
+  if (PAGE_AGENT_SOURCE === null) {
+    try {
+      PAGE_AGENT_SOURCE = fs.readFileSync(path.join(__dirname, 'vault', 'page-agent.js'), 'utf-8');
+    } catch (err) {
+      console.error('[Holly] Could not read the page agent:', err.message);
+      PAGE_AGENT_SOURCE = '';
+    }
+  }
+  return PAGE_AGENT_SOURCE;
+}
+
+function injectPageAgent(wc) {
+  if (!pageVault) { return; }
+  let url = '';
+  try { url = wc.getURL(); } catch (err) { return; }
+  // Only real web pages. Nothing to autofill on about:blank, and the vault's
+  // own file:// UI must never receive the page agent.
+  if (!/^https?:\/\//i.test(url)) { return; }
+  const source = pageAgentSource();
+  if (!source) { return; }
+  wc.executeJavaScript(source, true).catch((err) => {
+    console.warn('[Holly] Page agent injection failed for', url, '-', err.message);
+  });
 }
 
 // [SovereignBrowser] The vault window.
@@ -1052,6 +1120,17 @@ app.on('web-contents-created', (_event, contents) => {
       openVaultWindow();
     }
   });
+
+  // Inject the page agent into tabs. dom-ready covers ordinary loads and
+  // full navigations; did-navigate-in-page covers single-page apps, which
+  // swap in a login form without ever reloading. The agent no-ops if it is
+  // already present, so a double injection is harmless.
+  const maybeInject = () => {
+    if (!tabViews || tabViews.tabIdForWebContents(contents.id) === null) { return; }
+    injectPageAgent(contents);
+  };
+  contents.on('dom-ready', maybeInject);
+  contents.on('did-navigate-in-page', maybeInject);
 });
 
 // Opening the vault window from the chrome UI's overflow menu.
