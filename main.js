@@ -910,6 +910,45 @@ async function setupChromeExtensions() {
   console.log('[Holly] Chrome extension support ready. Loaded:', all.length);
   all.forEach((e) => console.log('   -', e.name, e.version, e.id));
 }
+// [SovereignBrowser] Vault. The password manager's service and IPC live in
+// vault/ as ES modules; main.js is CommonJS, so they are pulled in with a
+// dynamic import() rather than require().
+//
+// The security model, because it is easy to weaken by accident: HOLLY renders
+// arbitrary web pages, so a vault IPC channel reachable from a page would hand
+// the vault to any site. registerVaultIpc therefore takes an identity predicate
+// and every handler consults it. VAULT_WINDOW_ID stays null until the vault
+// window is created, which means the channels exist but nothing on earth is
+// authorised to call them - the correct state to be in between actions.
+let vaultService = null;
+let VAULT_WINDOW_ID = null;
+
+function isAuthorisedVaultSender(event) {
+  if (VAULT_WINDOW_ID === null) return false;
+  if (event.sender.id !== VAULT_WINDOW_ID) return false;
+  // An iframe inside the vault window is not the vault window.
+  return event.senderFrame === event.sender.mainFrame;
+}
+
+async function setupVault() {
+  try {
+    const { VaultService } = await import('./vault/vault-service.mjs');
+    const { registerVaultIpc } = await import('./vault/vault-ipc.mjs');
+    vaultService = new VaultService({
+      vaultPath: path.join(PROFILE_DIR, 'vault.json'),
+      // Idle window only; the preference is not persisted yet, so this is the
+      // default every launch until a settings layer exists.
+      autoLockMs: 15 * 60 * 1000,
+    });
+    const channels = registerVaultIpc(vaultService, isAuthorisedVaultSender);
+    console.log(`[Holly] Vault ready (${channels.length} channels, no authorised window yet). File: ${vaultService.path} - state: ${vaultService.state}`);
+  } catch (err) {
+    // A broken vault must not stop the browser from opening.
+    vaultService = null;
+    console.error('[Holly] Vault setup failed, continuing without it:', err.message);
+  }
+}
+
 // [SovereignBrowser] Startup. This block was accidentally deleted by an earlier
 // edit and the file still passed `node --check`, because a main process with no
 // startup code is perfectly valid JavaScript - it just never opens a window.
@@ -929,6 +968,7 @@ async function setupChromeExtensions() {
       return;
     }
     await app.whenReady();
+    await setupVault();
     await loadExtensions();
     setupJarvisAgentHandlers();
 
