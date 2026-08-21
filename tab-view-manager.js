@@ -13,6 +13,11 @@
 'use strict';
 
 const { WebContentsView, Menu, clipboard, ipcMain } = require('electron');
+const path = require('node:path');
+
+// The vault's page-facing preload. Resolved once, from this file's own
+// location, so it cannot be affected by the process working directory.
+const PAGE_PRELOAD = path.join(__dirname, 'vault', 'page-preload.js');
 
 const FORWARDED_EVENTS = [
   'did-start-loading',
@@ -215,8 +220,18 @@ function createTabViewManager(win, opts) {
         sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,
-        // Deliberately NO preload: web pages must not receive HOLLY's
-        // electronAPI bridge. (The <webview> path leaked it to every site.)
+        // Still deliberately NO electronAPI preload: web pages must not receive
+        // HOLLY's own bridge. (The <webview> path leaked it to every site.)
+        //
+        // vault/page-preload.js is a different thing entirely - a deliberately
+        // narrow surface exposing only window.hollyVault: suggestions for THIS
+        // origin, one fill, generate, and a request for a save prompt. It
+        // carries no vault state, no entry list, and no way to commit a save.
+        // It only requires 'electron', so it works under sandbox: true.
+        //
+        // Not attached to incognito tabs: a private session should not be
+        // offering to store credentials.
+        ...(incognito ? {} : { preload: PAGE_PRELOAD }),
       },
     });
     const wc = view.webContents;
