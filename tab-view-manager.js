@@ -302,6 +302,14 @@ function createTabViewManager(win, opts) {
   }
 
   // ---- IPC surface -------------------------------------------------------
+  // Every tab channel in one place: registration clears stale handlers first so
+  // a second window can initialise cleanly, and dispose() leaves answering
+  // stubs behind rather than nothing (see the note on dispose below).
+  const TAB_CHANNELS = ['tab:create', 'tab:load', 'tab:cmd', 'tab:back', 'tab:forward', 'tab:layout', 'tab:activate', 'tab:destroy'];
+  for (const channel of TAB_CHANNELS) {
+    try { ipcMain.removeHandler(channel); } catch (err) { /* nothing registered yet */ }
+  }
+
   ipcMain.handle('tab:create', (event, { id, incognito }) => {
     try {
       createTab(id, incognito);
@@ -381,8 +389,20 @@ function createTabViewManager(win, opts) {
     if (disposed) { return; }
     disposed = true;
     for (const id of Array.from(tabsById.keys())) { destroyTab(id); }
-    for (const channel of ['tab:create', 'tab:load', 'tab:cmd', 'tab:back', 'tab:forward', 'tab:layout', 'tab:activate', 'tab:destroy']) {
+    // Leave an answering stub on each channel rather than removing it outright.
+    // The renderer is still tearing down when the window closes and can invoke
+    // tab:activate after this point; with no handler at all, Electron logs
+    // "Error occurred in handler for 'tab:activate': No handler registered",
+    // which looked like a fault but was only a late, harmless call. The stub
+    // answers it honestly and the registration loop above clears these before
+    // any future window registers its own.
+    for (const channel of TAB_CHANNELS) {
       try { ipcMain.removeHandler(channel); } catch (err) { /* already gone */ }
+      try {
+        ipcMain.handle(channel, () => ({ ok: false, error: 'tab views disposed' }));
+      } catch (err) {
+        console.warn('[tabviews] could not install disposed-stub for', channel, '-', err.message);
+      }
     }
   }
 
