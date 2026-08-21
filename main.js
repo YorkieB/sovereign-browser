@@ -755,6 +755,14 @@ function ensureExtensionsInstance() {
       return mainWindow();
     },
   });
+
+  // [SovereignBrowser] Toolbar icons. <browser-action-list> fetches each icon
+  // from crx://extension-icon/<id>/<size>/<type>. The library registers 'crx'
+  // as a privileged scheme at import time but never installs a handler for it -
+  // that is left to the app, via this static. Without it every icon request
+  // fails and the element falls back to drawing the first letter of the
+  // action's title, which is why extensions appeared as plain lettered tiles.
+  ElectronChromeExtensions.handleCRXProtocol(browserSession);
   // [SovereignBrowser] Popup lifecycle. The library's own blur handler
   // refuses to close while it thinks focus left the app - which on Windows
   // is exactly what a click on the parent window looks like mid-transition,
