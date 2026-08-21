@@ -213,3 +213,7 @@ Commit: c715a8b2f9830acf65a66e66e8b4525df53beb4a  Status: success
 ### 2026-08-21T21:02:02+01:00 — 102
 Instruction: Create the vault window: its own session, vault-preload.js attached, VAULT_WINDOW_ID pinned on creation and cleared on close, opened with Ctrl+Shift+K. This is the action that makes the vault reachable.
 Commit: e524037bedcf4c533b1ff8f9a5ede531e17c3c0d  Status: success
+
+### 2026-08-21T21:21:00+01:00 — 104
+Instruction: Add Keychain to HOLLY's overflow menu. Ctrl+Shift+K was the only way to reach the vault, which is not discoverable - there was no visible way to launch the password manager.
+Commit: 5e61943cceb3ce2648a903a00c2300681ed6d915  Status: success
