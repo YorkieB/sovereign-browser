@@ -205,3 +205,7 @@ Commit: 819b558885bfc79228bf9950c57cb8f94f293cb8  Status: success
 ### 2026-08-21T20:37:39+01:00 — 098
 Instruction: Clear the pre-existing 'No handler registered for tab:activate' defect recorded in Action 096, so it is not carried forward into the vault window work.
 Commit: df1d0c8497662bd90597ae8472a6d73e96002427  Status: success
+
+### 2026-08-21T20:53:40+01:00 — 100
+Instruction: Vendor the built Keychain vault UI into the HOLLY repo at vault/ui/, so the vault window created in the next action opens onto a working interface rather than a blank page. Files only - nothing loads them yet.
+Commit: c715a8b2f9830acf65a66e66e8b4525df53beb4a  Status: success
