@@ -197,3 +197,7 @@ Commit: a545e2511f536e0146ce39f7475899dee38f45fc  Status: success
 ### 2026-08-21T20:26:46+01:00 — 094
 Instruction: Add the vault window's preload as vault/vault-preload.js. File only - not referenced by any BrowserWindow yet, so no behaviour change.
 Commit: 22b6714cee6b83a2112e6ad7ff9bb780682a580c  Status: success
+
+### 2026-08-21T20:31:51+01:00 — 096
+Instruction: Wire the vault into main.js: instantiate VaultService against the profile directory and register the vault IPC channels behind an identity guard. No window yet, so no sender can be authorised.
+Commit: 819b558885bfc79228bf9950c57cb8f94f293cb8  Status: success
