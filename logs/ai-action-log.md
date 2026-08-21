@@ -181,3 +181,7 @@ Commit: 7c07f8dc6b2fc2526b4a7f2d79e3d3c07644e8ef  Status: success
 ### 2026-08-06T17:16:01+01:00 — 086
 Instruction: Revert action 084 (7c07f8d) as a user-directed diagnostic reset after a flicker report in the freshly launched post-084 instance. git revert only via scripts/ai-revert execute 084 with typed REVERT confirmation; no manual edits; logs untouched by the revert commit; Action 085 not reverted.
 Commit: 0eb6c4c110449d9a0a0a5810d08d1778f32b5cd9  Status: success
+
+### 2026-08-21T17:45:44+01:00 — 088
+Instruction: Register the crx:// protocol handler on the browsing session so <browser-action-list> toolbar icons resolve instead of falling back to lettered tiles.
+Commit: 272e8c71439155778ccede04b738a7925aef3124  Status: success
