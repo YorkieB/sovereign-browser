@@ -189,3 +189,7 @@ Commit: 272e8c71439155778ccede04b738a7925aef3124  Status: success
 ### 2026-08-21T17:52:57+01:00 — 090
 Instruction: Add a single-instance lock so a duplicate HOLLY launch exits and focuses the running window instead of contending for the profile's LevelDB locks.
 Commit: 4c8051450aa091b1729d44c32f29a3f5ddfe0d6d  Status: success
+
+### 2026-08-21T20:22:06+01:00 — 092
+Instruction: Promote the sandbox-proven vault core into the HOLLY repo as vault/vault-crypto.mjs, vault/vault-service.mjs and vault/vault-ipc.mjs. Files only - no wiring into main.js, no behaviour change to the running browser.
+Commit: a545e2511f536e0146ce39f7475899dee38f45fc  Status: success
