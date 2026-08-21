@@ -939,15 +939,26 @@ async function setupVault() {
     const { createPageVault } = await import('./vault/page-vault.mjs');
     const { registerPageVaultIpc } = await import('./vault/page-vault-ipc.mjs');
     const { createSavePromptManager } = await import('./vault/save-prompt.mjs');
+    const { readSettings, writeSettings } = await import('./vault/vault-settings.mjs');
+
+    // The auto-lock policy has to be known BEFORE the vault is unlocked, so it
+    // lives in its own small file rather than inside the encrypted vault -
+    // otherwise you would have to unlock to find out how long you stay
+    // unlocked for. Nothing secret is stored here.
+    const settingsPath = path.join(PROFILE_DIR, 'vault-settings.json');
+    const settings = readSettings(settingsPath);
 
     vaultService = new VaultService({
       vaultPath: path.join(PROFILE_DIR, 'vault.json'),
-      // Idle window only; the preference is not persisted yet, so this is the
-      // default every launch until a settings layer exists.
-      autoLockMs: 15 * 60 * 1000,
+      autoLockMs: settings.autoLockMs,
     });
-    const channels = registerVaultIpc(vaultService, isAuthorisedVaultSender);
-    console.log(`[Holly] Vault ready (${channels.length} channels, no authorised window yet). File: ${vaultService.path} - state: ${vaultService.state}`);
+    const channels = registerVaultIpc(vaultService, isAuthorisedVaultSender, {
+      onAutoLockChanged: (applied) => {
+        writeSettings(settingsPath, { autoLockMs: applied });
+        console.log('[Holly] Vault auto-lock set to', applied === null ? 'never' : `${applied} ms`, '(saved)');
+      },
+    });
+    console.log(`[Holly] Vault ready (${channels.length} channels, no authorised window yet). File: ${vaultService.path} - state: ${vaultService.state} - auto-lock: ${settings.autoLockMs === null ? 'never' : settings.autoLockMs + ' ms'}`);
 
     // --- page integration -------------------------------------------------
     // Autofill is on for every site by default; "Never for this site" in the

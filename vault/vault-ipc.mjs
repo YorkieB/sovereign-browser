@@ -31,11 +31,17 @@ function isPlainString(v) { return typeof v === "string"; }
 /**
  * @param service   a VaultService instance
  * @param isAuthorised  (event) => boolean - decides whether this caller may use the vault
+ * @param options   { onAutoLockChanged } - called after a successful policy
+ *                  change so the caller can persist it. Persistence is the
+ *                  caller's job: this module does not touch the disk.
  */
-export function registerVaultIpc(service, isAuthorised) {
+export function registerVaultIpc(service, isAuthorised, options) {
   if (typeof isAuthorised !== "function") {
     throw new Error("registerVaultIpc requires an isAuthorised(event) predicate.");
   }
+  const onAutoLockChanged = options && typeof options.onAutoLockChanged === "function"
+    ? options.onAutoLockChanged
+    : null;
 
   const handlers = {
     "vault:state": () => service.state,
@@ -81,7 +87,19 @@ export function registerVaultIpc(service, isAuthorised) {
     },
     "vault:import": (entries) => service.importEntries(entries),
 
-    "vault:set-auto-lock": (value) => service.setAutoLock(value),
+    "vault:set-auto-lock": (value) => {
+      const applied = service.setAutoLock(value);
+      // Only after the service accepted it: an invalid value throws above and
+      // never reaches here, so a rejected change is never persisted.
+      if (onAutoLockChanged) {
+        try {
+          onAutoLockChanged(applied);
+        } catch (err) {
+          console.warn("[vault-ipc] could not persist the auto-lock policy:", err.message);
+        }
+      }
+      return applied;
+    },
     "vault:generate": (options) => generatePassword(options || {}),
   };
 
