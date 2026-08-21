@@ -949,6 +949,111 @@ async function setupVault() {
   }
 }
 
+// [SovereignBrowser] The vault window.
+//
+// Deliberately NOT in the browsing session. Extensions are loaded into
+// persist:holly, so a vault window sharing it would have Tampermonkey and Dark
+// Reader injecting content scripts into the page that displays decrypted
+// passwords. persist:holly-vault has no extensions and no web content in it.
+//
+// It also never navigates: the UI is a local file and any attempt to leave it,
+// or to open a new window from it, is refused. A vault window that can be
+// steered to a URL is a vault window that can be phished.
+let vaultWindow = null;
+let vaultLockWatcher = null;
+
+function openVaultWindow() {
+  if (!vaultService) {
+    console.warn('[Holly] Vault unavailable - cannot open the vault window.');
+    return null;
+  }
+  if (vaultWindow && !vaultWindow.isDestroyed()) {
+    if (vaultWindow.isMinimized()) { vaultWindow.restore(); }
+    vaultWindow.show();
+    vaultWindow.focus();
+    return vaultWindow;
+  }
+
+  vaultWindow = new BrowserWindow({
+    width: 1100,
+    height: 820,
+    minWidth: 720,
+    minHeight: 560,
+    title: 'Keychain',
+    autoHideMenuBar: true,
+    backgroundColor: '#faf9f7',
+    webPreferences: {
+      preload: path.join(__dirname, 'vault', 'vault-preload.js'),
+      session: session.fromPartition('persist:holly-vault'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webviewTag: false,
+      spellcheck: false,
+    },
+  });
+
+  // Pin the guard to this exact webContents. Until now VAULT_WINDOW_ID was
+  // null and every vault channel refused everyone.
+  VAULT_WINDOW_ID = vaultWindow.webContents.id;
+
+  vaultWindow.webContents.on('will-navigate', (event, url) => {
+    event.preventDefault();
+    console.warn('[Holly] Vault window blocked a navigation to', url);
+  });
+  vaultWindow.webContents.setWindowOpenHandler(({ url }) => {
+    console.warn('[Holly] Vault window blocked a popup to', url);
+    return { action: 'deny' };
+  });
+  vaultWindow.webContents.on('preload-error', (event, file, error) => {
+    console.error('[Holly] Vault preload failed:', file, '-', error.message);
+  });
+
+  // Tell the renderer when the vault locks itself, so it can drop the
+  // decrypted entries. Only on a real unlocked -> locked transition: firing
+  // while the vault is merely 'empty' would push a first-run user to the
+  // unlock screen.
+  let wasUnlocked = vaultService.state === 'unlocked';
+  vaultLockWatcher = setInterval(() => {
+    if (!vaultWindow || vaultWindow.isDestroyed()) { return; }
+    const nowUnlocked = vaultService.state === 'unlocked';
+    if (wasUnlocked && !nowUnlocked) { vaultWindow.webContents.send('vault:locked'); }
+    wasUnlocked = nowUnlocked;
+  }, 2000);
+
+  vaultWindow.on('closed', () => {
+    // Closing the window locks the vault: leaving the key in memory with no
+    // window to lock from would be the worst of both.
+    VAULT_WINDOW_ID = null;
+    if (vaultLockWatcher) { clearInterval(vaultLockWatcher); vaultLockWatcher = null; }
+    try { vaultService.lock(); } catch (err) {
+      console.warn('[Holly] Vault lock on window close failed:', err.message);
+    }
+    vaultWindow = null;
+    console.log('[Holly] Vault window closed - vault locked, IPC guard closed.');
+  });
+
+  vaultWindow.loadFile(path.join(__dirname, 'vault', 'ui', 'index.html')).catch((err) => {
+    console.error('[Holly] Vault UI failed to load:', err.message);
+  });
+
+  console.log('[Holly] Vault window open (webContents', VAULT_WINDOW_ID + ') - state:', vaultService.state);
+  return vaultWindow;
+}
+
+// Ctrl+Shift+K from anywhere in HOLLY, including inside a tab. Registered per
+// webContents rather than as a global shortcut, which would fire even when
+// HOLLY is not the focused application.
+app.on('web-contents-created', (_event, contents) => {
+  contents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') { return; }
+    if (input.control && input.shift && !input.alt && (input.key === 'K' || input.key === 'k')) {
+      event.preventDefault();
+      openVaultWindow();
+    }
+  });
+});
+
 // [SovereignBrowser] Startup. This block was accidentally deleted by an earlier
 // edit and the file still passed `node --check`, because a main process with no
 // startup code is perfectly valid JavaScript - it just never opens a window.
