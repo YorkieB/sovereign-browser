@@ -217,3 +217,7 @@ Commit: e524037bedcf4c533b1ff8f9a5ede531e17c3c0d  Status: success
 ### 2026-08-21T21:21:00+01:00 — 104
 Instruction: Add Keychain to HOLLY's overflow menu. Ctrl+Shift+K was the only way to reach the vault, which is not discoverable - there was no visible way to launch the password manager.
 Commit: 5e61943cceb3ce2648a903a00c2300681ed6d915  Status: success
+
+### 2026-08-21T22:15:13+01:00 — 106
+Instruction: Promote the sandbox-proven page-integration layer into the HOLLY repo: origin matching, the page-facing vault surface, the page IPC, the page agent, and the save prompt. Files only - nothing imports or injects them yet.
+Commit: 4097596fced36af573754043f65cc32697d1ccfa  Status: success
