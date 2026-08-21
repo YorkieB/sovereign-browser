@@ -229,3 +229,7 @@ Commit: 46b9b1f936d05a8326579842ae19a57b12c0609b  Status: success
 ### 2026-08-21T22:35:14+01:00 — 110
 Instruction: Wire page autofill into HOLLY: create the page-facing vault surface, register the pagevault IPC behind a tab-identity guard, inject the page agent into tabs, and hand save offers to a browser-drawn prompt. Completes the autofill sequence - the feature is live after this.
 Commit: ec93ec302b376d54f37dba61fa597534f36f85a5  Status: success
+
+### 2026-08-21T22:44:33+01:00 — 112
+Instruction: Make the auto-lock policy survive a restart. It previously reset to 15 minutes on every launch because HOLLY had no settings layer, so the Never option and any chosen window were effectively cosmetic.
+Commit: 4c0a840ac4059b6c01457daa5a2b6902dca358c0  Status: success
