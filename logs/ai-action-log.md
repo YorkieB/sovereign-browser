@@ -209,3 +209,7 @@ Commit: df1d0c8497662bd90597ae8472a6d73e96002427  Status: success
 ### 2026-08-21T20:53:40+01:00 — 100
 Instruction: Vendor the built Keychain vault UI into the HOLLY repo at vault/ui/, so the vault window created in the next action opens onto a working interface rather than a blank page. Files only - nothing loads them yet.
 Commit: c715a8b2f9830acf65a66e66e8b4525df53beb4a  Status: success
+
+### 2026-08-21T21:02:02+01:00 — 102
+Instruction: Create the vault window: its own session, vault-preload.js attached, VAULT_WINDOW_ID pinned on creation and cleared on close, opened with Ctrl+Shift+K. This is the action that makes the vault reachable.
+Commit: e524037bedcf4c533b1ff8f9a5ede531e17c3c0d  Status: success
