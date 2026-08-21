@@ -215,6 +215,23 @@ try {
   throw new Error('Profile directory unusable at ' + PROFILE_DIR + ': ' + err.message);
 }
 
+// [SovereignBrowser] Single instance. Two HOLLY processes pointed at one
+// profile fight over the same LevelDB stores: the second is refused the
+// extension-storage LOCK, so extensions load but can never read their own
+// settings - Tampermonkey's service worker died on exactly this. The lock is
+// keyed on userData, so this must run AFTER app.setPath('userData', ...)
+// above or it would guard the wrong directory.
+const GOT_INSTANCE_LOCK = app.requestSingleInstanceLock();
+if (GOT_INSTANCE_LOCK) {
+  app.on('second-instance', () => {
+    const win = mainWindow();
+    if (!win || win.isDestroyed()) { return; }
+    if (win.isMinimized()) { win.restore(); }
+    win.show();
+    win.focus();
+  });
+}
+
 // Seed the home page from the bundled template on FIRST RUN ONLY, so the
 // user's own edits to the live home page are never overwritten.
 try {
@@ -903,6 +920,14 @@ async function setupChromeExtensions() {
 // startWorkerForScope left a main process running with no window at all.
 (async () => {
   try {
+    // [SovereignBrowser] A duplicate launch stops here. Quitting before
+    // whenReady() means no window, no session and no extension load, so the
+    // running instance keeps sole ownership of the profile's LevelDB locks.
+    if (!GOT_INSTANCE_LOCK) {
+      console.log('[Holly] Another instance is already running - focusing it and exiting.');
+      app.quit();
+      return;
+    }
     await app.whenReady();
     await loadExtensions();
     setupJarvisAgentHandlers();
