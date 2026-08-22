@@ -133,6 +133,7 @@
         min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; cursor: pointer;
         background: #7c4dff; color: #fff; font: 600 11px/1 system-ui, sans-serif;
         box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+      .badge-empty { background: #cfcbe6; color: #4a4458; font-size: 12px; }
     `;
     shadow.appendChild(style);
     return shadow;
@@ -234,13 +235,17 @@
     const sh = ensureHost();
     const existing = sh.querySelector('.badge');
     if (existing) existing.remove();
-    if (!count) return;
     const r = anchor.getBoundingClientRect();
     if (r.width < 40) return;
     const b = document.createElement('div');
-    b.className = 'badge';
-    b.textContent = String(count);
-    b.title = `${count} saved ${count === 1 ? 'password' : 'passwords'} for this site`;
+    // Always rendered. A count when there is something to fill, a key glyph
+    // when there is not - so "nothing saved here" and "autofill is not
+    // running" never look the same.
+    b.className = count > 0 ? 'badge' : 'badge badge-empty';
+    b.textContent = count > 0 ? String(count) : '\u26bf';
+    b.title = count > 0
+      ? `${count} saved ${count === 1 ? 'password' : 'passwords'} for this site`
+      : 'Holly Keychain - no saved passwords for this site';
     b.style.top = `${window.scrollY + r.top + (r.height / 2) - 9}px`;
     b.style.left = `${window.scrollX + r.right - 28}px`;
     b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); onClick(); });
@@ -286,10 +291,39 @@
       });
       return;
     }
+
+    const anchor = field.username || field.password;
     const res = await api.suggestions();
-    if (!res.ok || res.value.length === 0) return;
+
+    // The panel always opens. A silent nothing leaves you wondering whether
+    // the vault is locked, whether nothing is stored, or whether autofill is
+    // broken - three very different problems that deserve three answers.
+    if (!res.ok) {
+      const locked = res.code === 'LOCKED';
+      showPanel(anchor, {
+        title: 'Saved passwords',
+        manage: true,
+        rows: [{
+          kind: 'note',
+          label: locked
+            ? 'Your vault is locked. Unlock Keychain to see saved passwords.'
+            : 'Passwords are unavailable right now.',
+        }],
+      });
+      return;
+    }
+
+    if (res.value.length === 0) {
+      showPanel(anchor, {
+        title: 'Saved passwords',
+        manage: true,
+        rows: [{ kind: 'note', label: `No passwords available for ${location.hostname}.` }],
+      });
+      return;
+    }
+
     const site = location.hostname;
-    showPanel(field.username || field.password, {
+    showPanel(anchor, {
       title: 'Saved passwords',
       manage: true,
       rows: res.value.map((s) => ({
@@ -301,20 +335,27 @@
           if (!f.ok) return;
           if (field.username) setValue(field.username, f.value.username);
           setValue(field.password, f.value.password);
-          hideBadge();
+          markField(field);
         },
       })),
     });
   }
 
-  // Count the credentials available for this page once, and mark the field so
-  // the user can see there is something to fill.
+  // The badge sits on every login field, always - the same way Proton Pass
+  // does it. Its absence would otherwise be ambiguous: no badge could mean
+  // "nothing saved" or "autofill is not running here", and those need telling
+  // apart. It shows a count when there are matches and a key glyph otherwise.
   async function markField(field) {
     if (!api || field.kind === 'register') return;
-    const res = await api.suggestions();
-    if (!res.ok || res.value.length === 0) return;
     const anchor = field.username || field.password;
-    showBadge(anchor, res.value.length, () => offerSuggestions(field));
+    let count = 0;
+    try {
+      const res = await api.suggestions();
+      count = res.ok ? res.value.length : 0;
+    } catch (err) {
+      count = 0;
+    }
+    showBadge(anchor, count, () => offerSuggestions(field));
   }
 
   // ---- save capture -----------------------------------------------------
