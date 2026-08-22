@@ -297,3 +297,7 @@ Commit: 9f21cd697d400c2b0f67dcd1e47dcef111c2e1fd  Status: success
 ### 2026-08-22T17:43:30+01:00 — 144
 Instruction: Fix the overflow (three-dot) menu: clicking Find, Reload, Full screen, Zoom in/out/reset, Bookmark this page, Clear history, and About did nothing. Diagnose the real mechanism and repair so these data-action items work, without breaking items that have their own listeners.
 Commit: e50a302226cfea32d67f19b7c7fc829d182ef168  Status: success
+
+### 2026-08-22T18:05:00+01:00 — 146
+Instruction: Fix the supply-chain Scout 401 Unauthorized (confirmed current, not stale) without abandoning Docker Scout. Applied the combined highest-value change from a strict brainstorm + multi-step reasoning: use scout-action native dockerhub-user/dockerhub-password inputs instead of DOCKER_SCOUT_HUB_* env vars, add organization input, remove the conflicting env block.
+Commit: 7d37e69bf8bca0cb2cf63b2fd53c3d4ddfbf96a6  Status: success
