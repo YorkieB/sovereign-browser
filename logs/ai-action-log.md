@@ -310,3 +310,7 @@ Commit: a5ff2ba297f6c6eadf86fb4b0d892ccbdaa56bf1  Status: success
 Instruction: Confirm the Scout supply-chain gate is finally green on CI after action 148 (simplified auth) plus the earlier org enrolment.
 Commit: _none (verification only)  Status: success
 
+
+### 2026-08-22T19:53:00+01:00 — 152
+Instruction: Investigate then (on approval) fix the Electron CSP security warning surfaced by DevTools: 'This renderer process has either no Content Security Policy set or a policy with unsafe-eval enabled.' Add a strict CSP to the chrome without breaking extensions, Holly, or the overflow menu.
+Commit: 0eea961c9a9fbe0cb692899cf2830895acb230e5  Status: success
