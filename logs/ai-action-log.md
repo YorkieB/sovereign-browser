@@ -261,3 +261,7 @@ Commit: dd4dd01cc5578ee9fb66d3d5137ad98b2d05c9cd  Status: success
 ### 2026-08-22T14:25:10+01:00 — 126
 Instruction: Add a sandbox-proven Dev Container definition to the Sovereign/holly repo (.devcontainer/devcontainer.json + Dockerfile): Node 22 base matching host v22.22.3, Electron headless-test deps (xvfb, xauth, Chromium shared libs), node_modules on a named volume, npm ci as postCreate.
 Commit: d2798c5389747c7c0ab0bcbbf0026790a9f800c1  Status: success
+
+### 2026-08-22T14:36:40+01:00 — 128
+Instruction: Add a real-dependency integration test layer using Testcontainers: test/integration/page-load.test.mjs spins a genuine nginx:alpine container serving a marker page on a random mapped port; test/integration/test-main.cjs is a test-owned Electron entry that loads --url in a hidden window and asserts the marker title, mirroring the [smoke] grep-able PASS/FAIL + exit-code convention. npm script test:integration added; devDependency testcontainers ^12.1.0.
+Commit: 8902da232f50fb756e5d1543ece6f379885fe2e3  Status: success
