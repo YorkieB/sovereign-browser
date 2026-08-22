@@ -58,3 +58,41 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Integration (Testcontainers nginx + Electron page load)
         run: xvfb-run -a npm run test:integration
+
+  release:
+    # Provenance layer: build the Windows artifacts, sign a SLSA attestation over
+    # them via Sigstore (keyless, GitHub OIDC), then re-verify before finishing.
+    # Runs only after the three proof jobs pass, and only on pushes to main.
+    needs: [check, smoke, integration]
+    if: github.event_name == 'push'
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      id-token: write        # OIDC token used by Sigstore to sign
+      attestations: write    # write the attestation to the repo
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Build Windows artifacts
+        run: npm run build
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            dist/*.exe
+      - name: Verify attestation on the built artifacts
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist/*.exe | Select-Object -First 1
+          gh attestation verify $exe.FullName --repo $env:GITHUB_REPOSITORY
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: holly-windows
+          path: dist/*.exe
