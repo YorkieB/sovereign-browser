@@ -364,7 +364,19 @@
 		row.addEventListener("click", function (e) {
 			e.stopPropagation();
 			var target = row.querySelector("button");
-			if (target) { target.click(); }
+			if (target) {
+				// [SovereignBrowser] data-action items are handled ONLY by the
+				// delegated dispatcher, which never receives the event because the
+				// row's stopPropagation() halts bubbling. Call the dispatcher
+				// directly for them. Buttons with their own listeners (Split view,
+				// tab groups, DevTools, Keychain, Settings, Voice) still get .click().
+				var action = target.getAttribute("data-action");
+				if (action && typeof globalThis.handleMenuAction === "function") {
+					globalThis.handleMenuAction(action);
+				} else {
+					target.click();
+				}
+			}
 			close();
 		});
 	});

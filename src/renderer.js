@@ -6443,6 +6443,9 @@ omnibox.addEventListener("input", (e) => {
 
 	// Menu bar actions // [NRS-1301]
 	function handleMenuAction(action) {
+		// [SovereignBrowser] Exposed so the overflow-menu row handler in
+		// index.html can dispatch data-action items directly (their delegated
+		// listener never fires because the row's stopPropagation halts bubbling).
 		// [NRS-1301]
 		const actionMap = {
 			// [NRS-1301]
@@ -6582,6 +6585,8 @@ omnibox.addEventListener("input", (e) => {
 		const handler = actionMap[action]; // [RESTORED]
 		if (handler) handler(); // [NRS-1301]
 	} // [NRS-1301]
+	// [SovereignBrowser] expose for the overflow-menu row handler in index.html
+	globalThis.handleMenuAction = handleMenuAction;
 
 	async function renderBookmarksMenu() {
 		// [NRS-1301]
