@@ -293,3 +293,7 @@ Commit: d4ee8b610221a311fe7e43628bba57036a4101f2  Status: success
 ### 2026-08-22T16:13:00+01:00 — 142
 Instruction: Fix the supply-chain job failure on CI run 32579972335: (1) scout-action rejected 'only-severity'/'only-package-type' - correct names are plural 'only-severities'/'only-package-types'; (2) Scout via the GitHub action returned 'user githubactions not entitled to use Docker Scout' - needs Docker Hub auth on the runner. Add docker/login-action with DOCKERHUB_USER/DOCKERHUB_TOKEN repo secrets and pass Scout hub creds via env.
 Commit: 9f21cd697d400c2b0f67dcd1e47dcef111c2e1fd  Status: success
+
+### 2026-08-22T17:43:30+01:00 — 144
+Instruction: Fix the overflow (three-dot) menu: clicking Find, Reload, Full screen, Zoom in/out/reset, Bookmark this page, Clear history, and About did nothing. Diagnose the real mechanism and repair so these data-action items work, without breaking items that have their own listeners.
+Commit: e50a302226cfea32d67f19b7c7fc829d182ef168  Status: success
