@@ -1105,15 +1105,21 @@ function openVaultWindow() {
   }, 2000);
 
   vaultWindow.on('closed', () => {
-    // Closing the window locks the vault: leaving the key in memory with no
-    // window to lock from would be the worst of both.
+    // The vault deliberately stays unlocked when this window closes.
+    //
+    // It used to lock here, from when this window was the only thing that used
+    // the vault. Autofill changed that: closing the manager would kill
+    // suggestions on every page, so you would have to unlock again for each
+    // login - which is precisely the friction that stops people using a
+    // password manager at all. Locking is now governed by the auto-lock policy
+    // and the explicit Lock button, both of which the user controls.
+    //
+    // The IPC guard still closes with the window: VAULT_WINDOW_ID goes null, so
+    // no renderer is authorised for the vault channels until it reopens.
     VAULT_WINDOW_ID = null;
     if (vaultLockWatcher) { clearInterval(vaultLockWatcher); vaultLockWatcher = null; }
-    try { vaultService.lock(); } catch (err) {
-      console.warn('[Holly] Vault lock on window close failed:', err.message);
-    }
     vaultWindow = null;
-    console.log('[Holly] Vault window closed - vault locked, IPC guard closed.');
+    console.log('[Holly] Vault window closed - IPC guard closed, vault left', vaultService && vaultService.isUnlocked ? 'unlocked' : 'locked');
   });
 
   vaultWindow.loadFile(path.join(__dirname, 'vault', 'ui', 'index.html')).catch((err) => {
