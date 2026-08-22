@@ -25,4 +25,9 @@ contextBridge.exposeInMainWorld('hollyVault', Object.freeze({
   // offered; the page never learns what is stored, and cannot accept on the
   // user's behalf.
   offerSave: (username, password) => call('pagevault:offer-save', { username, password }),
+
+  // "Manage passwords": asks HOLLY to open the Keychain window. Returns
+  // nothing about the vault, and main rate-limits it so a page cannot spam
+  // windows open.
+  openManager: () => call('pagevault:open-manager'),
 }));

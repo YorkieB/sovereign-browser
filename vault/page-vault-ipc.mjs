@@ -27,10 +27,16 @@ function toFailure(err) {
  * @param onSaveOffer      (webContents, origin, decision, credential) => void
  *                         called when a page asks for a save prompt; main draws it
  */
-export function registerPageVaultIpc(pageVault, isAuthorisedTab, onSaveOffer) {
+export function registerPageVaultIpc(pageVault, isAuthorisedTab, onSaveOffer, onOpenManager) {
   if (typeof isAuthorisedTab !== 'function') {
     throw new Error('registerPageVaultIpc requires an isAuthorisedTab(event) predicate.');
   }
+
+  // "Manage passwords" opens a window. Opening a window is not dangerous, but
+  // a page that could do it in a loop would be, so it is rate-limited per
+  // sender. Nothing about the vault is returned either way.
+  const OPEN_COOLDOWN_MS = 5000;
+  const lastOpen = new Map();
 
   const senderOrigin = (event) => {
     const frame = event.senderFrame;
@@ -57,6 +63,15 @@ export function registerPageVaultIpc(pageVault, isAuthorisedTab, onSaveOffer) {
         onSaveOffer(event.sender, origin, decision, credential);
       }
       return { offered: true, action: decision.action, needsUnlock: decision.needsUnlock };
+    },
+    'pagevault:open-manager': (origin, args, event) => {
+      const id = event.sender.id;
+      const now = Date.now();
+      const last = lastOpen.get(id) || 0;
+      if (now - last < OPEN_COOLDOWN_MS) return { opened: false, reason: 'too soon' };
+      lastOpen.set(id, now);
+      if (typeof onOpenManager === 'function') onOpenManager(event.sender, origin);
+      return { opened: true };
     },
   };
 

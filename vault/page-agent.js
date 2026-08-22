@@ -107,17 +107,32 @@
     shadow = host.attachShadow({ mode: 'closed' });
     const style = document.createElement('style');
     style.textContent = `
-      .panel { position: absolute; min-width: 260px; background: #fff; color: #1c1c1c;
-        border: 1px solid #d8d5d0; border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.18);
+      .panel { position: absolute; min-width: 300px; max-width: 380px; background: #fff; color: #1c1c1c;
+        border: 1px solid #e3e1de; border-radius: 14px; box-shadow: 0 12px 34px rgba(0,0,0,.16);
         font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
-      .row { display: block; width: 100%; text-align: left; padding: 10px 12px; background: none;
+      .head { display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 14px 10px; font-weight: 700; font-size: 14px; }
+      .close { border: 0; background: none; cursor: pointer; font-size: 18px; line-height: 1;
+        color: #6b6b6b; padding: 0 2px; }
+      .close:hover { color: #1c1c1c; }
+      .list { max-height: 280px; overflow-y: auto; }
+      .row { display: block; width: 100%; text-align: left; padding: 9px 14px; background: none;
         border: 0; cursor: pointer; font: inherit; }
-      .row:hover { background: #f2efe9; }
-      .user { font-weight: 600; }
-      .site { color: #6b6b6b; font-size: 12px; }
+      .row:hover { background: #f4f2ef; }
+      .line1 { display: flex; gap: 6px; align-items: baseline; }
+      .user { font-weight: 600; color: #1c1c1c; }
+      .site { color: #6b6b6b; font-size: 12.5px; }
+      .dots { color: #8a8a8a; letter-spacing: 2px; font-size: 13px; margin-top: 2px; }
       .sep { height: 1px; background: #eceae5; }
+      .manage { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+        padding: 11px 14px; background: none; border: 0; cursor: pointer; font: inherit; color: #4a4a4a; }
+      .manage:hover { background: #f4f2ef; }
       .gen { color: #0b5cad; font-weight: 600; }
-      .note { padding: 8px 12px; color: #6b6b6b; font-size: 12px; }
+      .note { padding: 8px 14px 12px; color: #6b6b6b; font-size: 12px; }
+      .badge { position: absolute; display: flex; align-items: center; justify-content: center;
+        min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; cursor: pointer;
+        background: #7c4dff; color: #fff; font: 600 11px/1 system-ui, sans-serif;
+        box-shadow: 0 1px 4px rgba(0,0,0,.25); }
     `;
     shadow.appendChild(style);
     return shadow;
@@ -129,32 +144,113 @@
     if (p) p.remove();
   }
 
-  function showPanel(anchor, rows) {
+  function showPanel(anchor, spec) {
     const sh = ensureHost();
     hidePanel();
     const r = anchor.getBoundingClientRect();
     const panel = document.createElement('div');
     panel.className = 'panel';
-    panel.style.top = `${window.scrollY + r.bottom + 4}px`;
+    panel.style.top = `${window.scrollY + r.bottom + 6}px`;
     panel.style.left = `${window.scrollX + r.left}px`;
-    panel.style.width = `${Math.max(260, r.width)}px`;
-    for (const row of rows) {
-      if (row.kind === 'sep') { const s = document.createElement('div'); s.className = 'sep'; panel.appendChild(s); continue; }
-      if (row.kind === 'note') { const n = document.createElement('div'); n.className = 'note'; n.textContent = row.label; panel.appendChild(n); continue; }
+    panel.style.width = `${Math.max(300, Math.min(380, r.width))}px`;
+
+    const head = document.createElement('div');
+    head.className = 'head';
+    const title = document.createElement('span');
+    title.textContent = spec.title;
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'close';
+    close.setAttribute('aria-label', 'Close');
+    close.textContent = '\u00d7';
+    close.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); hidePanel(); });
+    head.appendChild(title);
+    head.appendChild(close);
+    panel.appendChild(head);
+
+    const list = document.createElement('div');
+    list.className = 'list';
+    for (const row of spec.rows) {
+      if (row.kind === 'note') {
+        const n = document.createElement('div');
+        n.className = 'note';
+        n.textContent = row.label;
+        list.appendChild(n);
+        continue;
+      }
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'row';
-      b.innerHTML = row.sub
-        ? `<span class="user">${escapeHtml(row.label)}</span><br><span class="site">${escapeHtml(row.sub)}</span>`
-        : `<span class="${row.accent ? 'gen' : 'user'}">${escapeHtml(row.label)}</span>`;
+      const line1 = document.createElement('div');
+      line1.className = 'line1';
+      const user = document.createElement('span');
+      user.className = row.accent ? 'gen' : 'user';
+      user.textContent = row.label;
+      line1.appendChild(user);
+      if (row.site) {
+        const site = document.createElement('span');
+        site.className = 'site';
+        site.textContent = `(${row.site})`;
+        line1.appendChild(site);
+      }
+      b.appendChild(line1);
+      if (row.masked) {
+        const dots = document.createElement('div');
+        dots.className = 'dots';
+        // Decorative only, and a FIXED length. Rendering the real password
+        // length would put a fact about the secret into the page before the
+        // user has chosen anything.
+        dots.textContent = '\u2022'.repeat(10);
+        b.appendChild(dots);
+      }
       b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); hidePanel(); row.onPick(); });
-      panel.appendChild(b);
+      list.appendChild(b);
     }
+    panel.appendChild(list);
+
+    if (spec.manage) {
+      const sep = document.createElement('div');
+      sep.className = 'sep';
+      panel.appendChild(sep);
+      const m = document.createElement('button');
+      m.type = 'button';
+      m.className = 'manage';
+      m.textContent = '\u2699  Manage passwords';
+      m.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        hidePanel();
+        if (api && api.openManager) api.openManager().catch(() => {});
+      });
+      panel.appendChild(m);
+    }
+
     sh.appendChild(panel);
   }
 
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // A small count chip on the field, so it is obvious there is something to
+  // fill without having to focus and hope.
+  function showBadge(anchor, count, onClick) {
+    const sh = ensureHost();
+    const existing = sh.querySelector('.badge');
+    if (existing) existing.remove();
+    if (!count) return;
+    const r = anchor.getBoundingClientRect();
+    if (r.width < 40) return;
+    const b = document.createElement('div');
+    b.className = 'badge';
+    b.textContent = String(count);
+    b.title = `${count} saved ${count === 1 ? 'password' : 'passwords'} for this site`;
+    b.style.top = `${window.scrollY + r.top + (r.height / 2) - 9}px`;
+    b.style.left = `${window.scrollX + r.right - 28}px`;
+    b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); onClick(); });
+    sh.appendChild(b);
+  }
+
+  function hideBadge() {
+    if (!shadow) return;
+    const b = shadow.querySelector('.badge');
+    if (b) b.remove();
   }
 
   // ---- filling ----------------------------------------------------------
@@ -172,32 +268,53 @@
   async function offerSuggestions(field) {
     if (!api) return;
     if (field.kind === 'register') {
-      showPanel(field.password, [
-        { kind: 'row', label: 'Generate a strong password', accent: true, onPick: async () => {
-          const res = await api.generate({ length: 20 });
-          if (!res.ok) return;
-          setValue(field.password, res.value);
-          const confirm = Array.from(field.scope.querySelectorAll('input[type="password"]'))
-            .filter((el) => el !== field.password && isVisible(el));
-          for (const c of confirm) setValue(c, res.value);
-          pending = { username: field.username ? field.username.value : '', password: res.value };
-        } },
-        { kind: 'note', label: 'Saved to your vault when you submit.' },
-      ]);
+      showPanel(field.password, {
+        title: 'Create a password',
+        manage: true,
+        rows: [
+          { label: 'Generate a strong password', accent: true, onPick: async () => {
+            const res = await api.generate({ length: 20 });
+            if (!res.ok) return;
+            setValue(field.password, res.value);
+            const confirm = Array.from(field.scope.querySelectorAll('input[type="password"]'))
+              .filter((el) => el !== field.password && isVisible(el));
+            for (const c of confirm) setValue(c, res.value);
+            pending = { username: field.username ? field.username.value : '', password: res.value };
+          } },
+          { kind: 'note', label: 'Holly will offer to save it when you submit.' },
+        ],
+      });
       return;
     }
     const res = await api.suggestions();
     if (!res.ok || res.value.length === 0) return;
-    const rows = res.value.map((s) => ({
-      kind: 'row', label: s.username || '(no username)', sub: s.service,
-      onPick: async () => {
-        const f = await api.fill(s.id);
-        if (!f.ok) return;
-        if (field.username) setValue(field.username, f.value.username);
-        setValue(field.password, f.value.password);
-      },
-    }));
-    showPanel(field.username || field.password, rows);
+    const site = location.hostname;
+    showPanel(field.username || field.password, {
+      title: 'Saved passwords',
+      manage: true,
+      rows: res.value.map((s) => ({
+        label: s.username || '(no username)',
+        site,
+        masked: true,
+        onPick: async () => {
+          const f = await api.fill(s.id);
+          if (!f.ok) return;
+          if (field.username) setValue(field.username, f.value.username);
+          setValue(field.password, f.value.password);
+          hideBadge();
+        },
+      })),
+    });
+  }
+
+  // Count the credentials available for this page once, and mark the field so
+  // the user can see there is something to fill.
+  async function markField(field) {
+    if (!api || field.kind === 'register') return;
+    const res = await api.suggestions();
+    if (!res.ok || res.value.length === 0) return;
+    const anchor = field.username || field.password;
+    showBadge(anchor, res.value.length, () => offerSuggestions(field));
   }
 
   // ---- save capture -----------------------------------------------------
@@ -234,6 +351,7 @@
         form.__hollyBound = true;
         form.addEventListener('submit', () => { capture(field); flush(); }, true);
       }
+      markField(field);
     }
     return fields;
   }

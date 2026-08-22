@@ -977,6 +977,10 @@ async function setupVault() {
       (senderWc, origin, decision, credential) => {
         savePrompts.offer(mainWindow(), origin, decision, credential);
       },
+      // "Manage passwords" in the suggestion panel. Opens the Keychain window
+      // and nothing else - the page learns nothing from it, and page-vault-ipc
+      // rate-limits the channel so a site cannot spam windows open.
+      () => { openVaultWindow(); },
     );
     console.log(`[Holly] Page autofill ready (${pageChannels.length} channels) - on by default for every site.`);
   } catch (err) {
