@@ -305,3 +305,8 @@ Commit: 7d37e69bf8bca0cb2cf63b2fd53c3d4ddfbf96a6  Status: success
 ### 2026-08-22T18:40:00+01:00 — 148
 Instruction: Action 146's fix changed the Scout error from 401 to 'missing or wrong failed to login into Docker Hub input'. After enrolling the yorkieb org in Scout (docker scout enroll yorkieb -> Successfully enrolled), CI still failed with the same input error. Diagnose from Docker's own scout-action README and fix.
 Commit: a5ff2ba297f6c6eadf86fb4b0d892ccbdaa56bf1  Status: success
+
+### 2026-08-22T18:47:00+01:00 — 150
+Instruction: Confirm the Scout supply-chain gate is finally green on CI after action 148 (simplified auth) plus the earlier org enrolment.
+Commit: _none (verification only)  Status: success
+
