@@ -269,3 +269,7 @@ Commit: 8902da232f50fb756e5d1543ece6f379885fe2e3  Status: success
 ### 2026-08-22T14:42:10+01:00 — 130
 Instruction: Add .github/workflows/ci.yml so every push to main (and every PR) automatically re-proves the sandbox-verified gates on a Linux runner: job check (npm run check), job smoke (xvfb-run electron . --smoke-test --no-sandbox), job integration (xvfb-run npm run test:integration - Testcontainers nginx + Electron page load). Node 22 with npm cache; Electron display deps mirror .devcontainer/Dockerfile with a runtime t64/pre-t64 apt name resolver for ubuntu 24.04 vs 22.04.
 Commit: d9283fd18b9e82221cb11e065c7a64dc28942bc9  Status: success
+
+### 2026-08-22T14:53:30+01:00 — 132
+Instruction: Bump actions/checkout and actions/setup-node from @v4 to @v7 in .github/workflows/ci.yml (six lines, three jobs) to clear the Node 20 deprecation annotation reported on CI run 32576707282.
+Commit: 5c990e443bec6bc24ff8c5f070d33181307f5a05  Status: success
