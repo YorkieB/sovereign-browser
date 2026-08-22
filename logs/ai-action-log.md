@@ -301,3 +301,7 @@ Commit: e50a302226cfea32d67f19b7c7fc829d182ef168  Status: success
 ### 2026-08-22T18:05:00+01:00 — 146
 Instruction: Fix the supply-chain Scout 401 Unauthorized (confirmed current, not stale) without abandoning Docker Scout. Applied the combined highest-value change from a strict brainstorm + multi-step reasoning: use scout-action native dockerhub-user/dockerhub-password inputs instead of DOCKER_SCOUT_HUB_* env vars, add organization input, remove the conflicting env block.
 Commit: 7d37e69bf8bca0cb2cf63b2fd53c3d4ddfbf96a6  Status: success
+
+### 2026-08-22T18:40:00+01:00 — 148
+Instruction: Action 146's fix changed the Scout error from 401 to 'missing or wrong failed to login into Docker Hub input'. After enrolling the yorkieb org in Scout (docker scout enroll yorkieb -> Successfully enrolled), CI still failed with the same input error. Diagnose from Docker's own scout-action README and fix.
+Commit: a5ff2ba297f6c6eadf86fb4b0d892ccbdaa56bf1  Status: success
