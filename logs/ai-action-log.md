@@ -265,3 +265,7 @@ Commit: d2798c5389747c7c0ab0bcbbf0026790a9f800c1  Status: success
 ### 2026-08-22T14:36:40+01:00 — 128
 Instruction: Add a real-dependency integration test layer using Testcontainers: test/integration/page-load.test.mjs spins a genuine nginx:alpine container serving a marker page on a random mapped port; test/integration/test-main.cjs is a test-owned Electron entry that loads --url in a hidden window and asserts the marker title, mirroring the [smoke] grep-able PASS/FAIL + exit-code convention. npm script test:integration added; devDependency testcontainers ^12.1.0.
 Commit: 8902da232f50fb756e5d1543ece6f379885fe2e3  Status: success
+
+### 2026-08-22T14:42:10+01:00 — 130
+Instruction: Add .github/workflows/ci.yml so every push to main (and every PR) automatically re-proves the sandbox-verified gates on a Linux runner: job check (npm run check), job smoke (xvfb-run electron . --smoke-test --no-sandbox), job integration (xvfb-run npm run test:integration - Testcontainers nginx + Electron page load). Node 22 with npm cache; Electron display deps mirror .devcontainer/Dockerfile with a runtime t64/pre-t64 apt name resolver for ubuntu 24.04 vs 22.04.
+Commit: d9283fd18b9e82221cb11e065c7a64dc28942bc9  Status: success
