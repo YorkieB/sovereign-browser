@@ -245,3 +245,7 @@ Commit: 1bcd872fe3f45c81b3b52c4e65e5f89dd93295a2  Status: success
 ### 2026-08-22T09:20:11+01:00 — 118
 Instruction: Fix the two matcher defects found in Yorkie's real vault during Action 116: entries holding several URLs only ever matched the first, and www was treated as a different host from the apex.
 Commit: 5c82347c33d8e769fad9af2d0b6eb91dc9463f96  Status: success
+
+### 2026-08-22T09:46:47+01:00 — 120
+Instruction: Stop the vault locking when the Keychain window is closed. Yorkie reported unlocking, closing the window, and finding the vault locked again - which makes autofill unusable.
+Commit: 3be1f8a44793075d8947180c1c1d2d0255ee657b  Status: success
