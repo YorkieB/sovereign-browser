@@ -233,3 +233,7 @@ Commit: ec93ec302b376d54f37dba61fa597534f36f85a5  Status: success
 ### 2026-08-21T22:44:33+01:00 — 112
 Instruction: Make the auto-lock policy survive a restart. It previously reset to 15 minutes on every launch because HOLLY had no settings layer, so the Never option and any chosen window were effectively cosmetic.
 Commit: 4c0a840ac4059b6c01457daa5a2b6902dca358c0  Status: success
+
+### 2026-08-22T09:00:16+01:00 — 114
+Instruction: Rebuild the autofill suggestion panel to match the layout Yorkie asked for (a Proton Pass style saved-passwords list): titled header with a close button, one row per credential showing username, site and a masked password, a 'Manage passwords' footer, and a count badge on the field.
+Commit: d8c8d43254bb439404e9e8f4516a6c83308ddb75  Status: success
