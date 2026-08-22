@@ -277,3 +277,7 @@ Commit: 5c990e443bec6bc24ff8c5f070d33181307f5a05  Status: success
 ### 2026-08-22T15:11:20+01:00 — 134
 Instruction: Add a release job to .github/workflows/ci.yml implementing artifact provenance (SLSA Build L2) the GitHub-native way: after check+smoke+integration pass on a push to main, build the Windows artifacts on windows-latest, generate a keyless Sigstore attestation over dist/*.exe via actions/attest-build-provenance, verify the attestation on the built files with gh attestation verify, and upload them.
 Commit: 0a07b96d4d03b2f5bcb9768d3a898a402566da3a  Status: success
+
+### 2026-08-22T15:17:30+01:00 — 136
+Instruction: Fix the release job build failure on CI run 32577956423: electron-builder detects CI and attempts to publish artifacts to a GitHub release, which requires GH_TOKEN and aborts with 'GitHub Personal Access Token is not set'. Add --publish never to the build script so it produces artifacts without publishing.
+Commit: 5fee84fb178178bb40a80321e75a59603769ccf9  Status: success
