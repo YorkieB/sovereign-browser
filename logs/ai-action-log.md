@@ -253,3 +253,7 @@ Commit: 3be1f8a44793075d8947180c1c1d2d0255ee657b  Status: success
 ### 2026-08-22T10:01:43+01:00 — 122
 Instruction: No badge appeared on the Namecheap sign-in dropdown. Detect login forms that are present in the DOM at load but hidden, and revealed later without any element being inserted.
 Commit: 06cc01afbc7aa47729340116108ebf11d155b3a1  Status: success
+
+### 2026-08-22T10:21:40+01:00 — 124
+Instruction: Reduce the chance of sites treating HOLLY as an anomaly, after Namecheap temporarily locked Yorkie's registrar account for 'unusual activity' following a sign-in from HOLLY.
+Commit: dd4dd01cc5578ee9fb66d3d5137ad98b2d05c9cd  Status: success
