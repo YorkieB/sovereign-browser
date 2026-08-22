@@ -1,0 +1,14 @@
+{
+  "name": "holly-sovereign",
+  "build": { "dockerfile": "Dockerfile" },
+  "remoteUser": "node",
+  "postCreateCommand": "npm ci --no-audit --no-fund",
+  "mounts": [
+    "source=holly-node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint"]
+    }
+  }
+}
