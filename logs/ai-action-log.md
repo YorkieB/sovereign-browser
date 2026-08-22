@@ -237,3 +237,7 @@ Commit: 4c0a840ac4059b6c01457daa5a2b6902dca358c0  Status: success
 ### 2026-08-22T09:00:16+01:00 — 114
 Instruction: Rebuild the autofill suggestion panel to match the layout Yorkie asked for (a Proton Pass style saved-passwords list): titled header with a close button, one row per credential showing username, site and a masked password, a 'Manage passwords' footer, and a count badge on the field.
 Commit: d8c8d43254bb439404e9e8f4516a6c83308ddb75  Status: success
+
+### 2026-08-22T09:13:47+01:00 — 116
+Instruction: Make the autofill badge always present on login fields, and have the panel state why it is empty rather than silently not appearing - matching Proton Pass behaviour. Prompted by Yorkie seeing nothing at all on https://github.com/login.
+Commit: 1bcd872fe3f45c81b3b52c4e65e5f89dd93295a2  Status: success
