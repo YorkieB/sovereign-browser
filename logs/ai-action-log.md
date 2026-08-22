@@ -241,3 +241,7 @@ Commit: d8c8d43254bb439404e9e8f4516a6c83308ddb75  Status: success
 ### 2026-08-22T09:13:47+01:00 — 116
 Instruction: Make the autofill badge always present on login fields, and have the panel state why it is empty rather than silently not appearing - matching Proton Pass behaviour. Prompted by Yorkie seeing nothing at all on https://github.com/login.
 Commit: 1bcd872fe3f45c81b3b52c4e65e5f89dd93295a2  Status: success
+
+### 2026-08-22T09:20:11+01:00 — 118
+Instruction: Fix the two matcher defects found in Yorkie's real vault during Action 116: entries holding several URLs only ever matched the first, and www was treated as a different host from the apex.
+Commit: 5c82347c33d8e769fad9af2d0b6eb91dc9463f96  Status: success
