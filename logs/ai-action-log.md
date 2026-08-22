@@ -285,3 +285,7 @@ Commit: 5fee84fb178178bb40a80321e75a59603769ccf9  Status: success
 ### 2026-08-22T15:26:40+01:00 — 138
 Instruction: Complete provenance layer 6: make YorkieB/sovereign-browser public so GitHub Artifact Attestations activate, re-run the release job on commit 41311ea, and verify a real signed SLSA attestation exists for the built artifact.
 Commit: -  Status: success
+
+### 2026-08-22T15:52:10+01:00 — 140
+Instruction: Add a Docker Scout supply-chain CVE gate to CI as a new job, and clear the fixable form-data CVE via lockfile update. Gate blocks the build on CRITICAL CVEs in npm packages we control; reports highs and Go-stdlib CVEs for triage without blocking.
+Commit: d4ee8b610221a311fe7e43628bba57036a4101f2  Status: success
