@@ -5,7 +5,7 @@
 	"main": "main.js",
 	"scripts": {
 		"start": "electron .",
-		"build": "electron-builder --win",
+		"build": "electron-builder --win --publish never",
 		"check": "node --check main.js && node --check preload.js && node --check src/renderer.js && echo CHECK-PASSED",
 		"smoke": "electron . --smoke-test",
 		"dashboard": "node scripts/revert-dashboard.mjs",
