@@ -281,3 +281,7 @@ Commit: 0a07b96d4d03b2f5bcb9768d3a898a402566da3a  Status: success
 ### 2026-08-22T15:17:30+01:00 — 136
 Instruction: Fix the release job build failure on CI run 32577956423: electron-builder detects CI and attempts to publish artifacts to a GitHub release, which requires GH_TOKEN and aborts with 'GitHub Personal Access Token is not set'. Add --publish never to the build script so it produces artifacts without publishing.
 Commit: 5fee84fb178178bb40a80321e75a59603769ccf9  Status: success
+
+### 2026-08-22T15:26:40+01:00 — 138
+Instruction: Complete provenance layer 6: make YorkieB/sovereign-browser public so GitHub Artifact Attestations activate, re-run the release job on commit 41311ea, and verify a real signed SLSA attestation exists for the built artifact.
+Commit: -  Status: success
