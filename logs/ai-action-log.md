@@ -257,3 +257,7 @@ Commit: 06cc01afbc7aa47729340116108ebf11d155b3a1  Status: success
 ### 2026-08-22T10:21:40+01:00 — 124
 Instruction: Reduce the chance of sites treating HOLLY as an anomaly, after Namecheap temporarily locked Yorkie's registrar account for 'unusual activity' following a sign-in from HOLLY.
 Commit: dd4dd01cc5578ee9fb66d3d5137ad98b2d05c9cd  Status: success
+
+### 2026-08-22T14:25:10+01:00 — 126
+Instruction: Add a sandbox-proven Dev Container definition to the Sovereign/holly repo (.devcontainer/devcontainer.json + Dockerfile): Node 22 base matching host v22.22.3, Electron headless-test deps (xvfb, xauth, Chromium shared libs), node_modules on a named volume, npm ci as postCreate.
+Commit: d2798c5389747c7c0ab0bcbbf0026790a9f800c1  Status: success
