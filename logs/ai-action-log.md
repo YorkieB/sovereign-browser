@@ -273,3 +273,7 @@ Commit: d9283fd18b9e82221cb11e065c7a64dc28942bc9  Status: success
 ### 2026-08-22T14:53:30+01:00 — 132
 Instruction: Bump actions/checkout and actions/setup-node from @v4 to @v7 in .github/workflows/ci.yml (six lines, three jobs) to clear the Node 20 deprecation annotation reported on CI run 32576707282.
 Commit: 5c990e443bec6bc24ff8c5f070d33181307f5a05  Status: success
+
+### 2026-08-22T15:11:20+01:00 — 134
+Instruction: Add a release job to .github/workflows/ci.yml implementing artifact provenance (SLSA Build L2) the GitHub-native way: after check+smoke+integration pass on a push to main, build the Windows artifacts on windows-latest, generate a keyless Sigstore attestation over dist/*.exe via actions/attest-build-provenance, verify the attestation on the built files with gh attestation verify, and upload them.
+Commit: 0a07b96d4d03b2f5bcb9768d3a898a402566da3a  Status: success
