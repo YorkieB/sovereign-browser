@@ -249,3 +249,7 @@ Commit: 5c82347c33d8e769fad9af2d0b6eb91dc9463f96  Status: success
 ### 2026-08-22T09:46:47+01:00 — 120
 Instruction: Stop the vault locking when the Keychain window is closed. Yorkie reported unlocking, closing the window, and finding the vault locked again - which makes autofill unusable.
 Commit: 3be1f8a44793075d8947180c1c1d2d0255ee657b  Status: success
+
+### 2026-08-22T10:01:43+01:00 — 122
+Instruction: No badge appeared on the Namecheap sign-in dropdown. Detect login forms that are present in the DOM at load but hidden, and revealed later without any element being inserted.
+Commit: 06cc01afbc7aa47729340116108ebf11d155b3a1  Status: success
