@@ -163,6 +163,49 @@ const CHROME_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' +
   'Chrome/' + process.versions.chrome + ' Safari/537.36';
 app.userAgentFallback = CHROME_UA;
+
+// [SovereignBrowser] User-Agent Client Hints.
+//
+// The UA string above says "Chrome/150", but Electron sends none of the
+// sec-ch-ua headers that every real Chrome sends on every request. A browser
+// claiming to be Chrome while omitting Chrome's own headers looks like
+// something pretending to be Chrome, which is worse than being honest -
+// fraud systems at registrars and banks treat it as an anomaly and lock
+// accounts. These three low-entropy hints are what Chrome sends unprompted;
+// high-entropy ones are only sent when a site asks, so they are not forged.
+const CHROME_MAJOR = String(process.versions.chrome).split('.')[0];
+const CLIENT_HINTS = {
+  'sec-ch-ua': `"Not)A;Brand";v="8", "Chromium";v="${CHROME_MAJOR}", "Google Chrome";v="${CHROME_MAJOR}"`,
+  'sec-ch-ua-mobile': '?0',
+  'sec-ch-ua-platform': '"Windows"',
+};
+// Chrome sends a weighted list, not a bare tag. A lone "en-GB" is another
+// small inconsistency of the same kind.
+const ACCEPT_LANGUAGE = 'en-GB,en;q=0.9';
+
+function applyClientHints(targetSession) {
+  if (!targetSession) { return; }
+  try {
+    targetSession.webRequest.onBeforeSendHeaders((details, callback) => {
+      if (!/^https?:/i.test(details.url || '')) {
+        callback({ requestHeaders: details.requestHeaders });
+        return;
+      }
+      const headers = details.requestHeaders;
+      // Never overwrite a header the page or Chromium has already set.
+      for (const [name, value] of Object.entries(CLIENT_HINTS)) {
+        const already = Object.keys(headers).some((h) => h.toLowerCase() === name);
+        if (!already) { headers[name] = value; }
+      }
+      const langKey = Object.keys(headers).find((h) => h.toLowerCase() === 'accept-language');
+      if (langKey && headers[langKey] === 'en-GB') { headers[langKey] = ACCEPT_LANGUAGE; }
+      callback({ requestHeaders: headers });
+    });
+  } catch (err) {
+    // Fingerprint tidiness must never stop the browser working.
+    console.warn('[Holly] Could not install client-hint headers:', err.message);
+  }
+}
 const BROWSING_PARTITION = 'persist:holly';
 function browsingSession() {
   return session.fromPartition(BROWSING_PARTITION);
@@ -1189,6 +1232,9 @@ ipcMain.handle('holly:vault:open', (event) => {
       return;
     }
     await app.whenReady();
+    // Before any tab loads, so the very first request already looks right.
+    applyClientHints(browsingSession());
+    applyClientHints(session.defaultSession);
     await setupVault();
     await loadExtensions();
     setupJarvisAgentHandlers();
