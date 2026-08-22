@@ -59,6 +59,35 @@ jobs:
       - name: Integration (Testcontainers nginx + Electron page load)
         run: xvfb-run -a npm run test:integration
 
+  supply-chain:
+    # Supply-chain layer: Docker Scout scans the dependency tree for CVEs.
+    # Fails the build on CRITICAL vulnerabilities in npm packages we control.
+    # Highs and Go-stdlib CVEs (baked into electron-builder binaries, unfixable
+    # from package.json) are printed for triage but do not block.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Full CVE report (all package types, non-blocking)
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: fs://.
+          only-severity: critical,high
+          exit-code: false
+      - name: Gate on critical npm CVEs (blocking)
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: fs://.
+          only-severity: critical
+          only-package-type: npm
+          exit-code: true
+
   release:
     # Provenance layer: build the Windows artifacts, sign a SLSA attestation over
     # them via Sigstore (keyless, GitHub OIDC), then re-verify before finishing.
