@@ -378,15 +378,6 @@
   function attach() {
     const fields = findFields(document);
     for (const field of fields) {
-      const focusTarget = field.username || field.password;
-      if (!focusTarget.__hollyBound) {
-        focusTarget.__hollyBound = true;
-        focusTarget.addEventListener('focus', () => offerSuggestions(field));
-      }
-      if (!field.password.__hollyBound) {
-        field.password.__hollyBound = true;
-        field.password.addEventListener('focus', () => offerSuggestions(field));
-      }
       const form = field.password.closest('form');
       if (form && !form.__hollyBound) {
         form.__hollyBound = true;
@@ -397,18 +388,41 @@
     return fields;
   }
 
+  // Focus is the one signal that always arrives. Sites reveal login forms in
+  // ways a MutationObserver can miss - a panel that was in the DOM all along
+  // and is un-hidden by a class change fires no childList mutation at all,
+  // which is exactly how Namecheap's sign-in dropdown behaved. Re-scanning
+  // when a field is focused catches every such case, whatever the site did.
+  document.addEventListener('focusin', (event) => {
+    const el = event.target;
+    if (!el || el.tagName !== 'INPUT') return;
+    const type = (el.type || '').toLowerCase();
+    if (!['password', 'text', 'email', 'tel', ''].includes(type)) return;
+    const fields = attach();
+    const field = fields.find((f) => f.password === el || f.username === el);
+    if (field) offerSuggestions(field);
+  }, true);
+
   document.addEventListener('click', (e) => {
     if (!host || !host.contains(e.target)) hidePanel();
   }, true);
 
-  // Sites render forms late and swap them out; re-scan on mutation, throttled.
+  // Re-scan on mutation, throttled. Attributes are watched as well as
+  // childList: revealing a hidden form by toggling a class or a style is a
+  // pure attribute change and would otherwise go unnoticed.
   let scanTimer = null;
   const observer = new MutationObserver(() => {
     if (scanTimer) return;
     scanTimer = setTimeout(() => { scanTimer = null; attach(); }, 400);
   });
-  if (document.body) observer.observe(document.body, { childList: true, subtree: true });
-  else document.addEventListener('DOMContentLoaded', () => observer.observe(document.body, { childList: true, subtree: true }));
+  const observeOptions = {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class', 'style', 'hidden', 'aria-hidden', 'type'],
+  };
+  if (document.body) observer.observe(document.body, observeOptions);
+  else document.addEventListener('DOMContentLoaded', () => observer.observe(document.body, observeOptions));
 
   // Single-page apps navigate without unloading; a captured credential must
   // still be offered.
