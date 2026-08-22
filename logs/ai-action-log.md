@@ -289,3 +289,7 @@ Commit: -  Status: success
 ### 2026-08-22T15:52:10+01:00 — 140
 Instruction: Add a Docker Scout supply-chain CVE gate to CI as a new job, and clear the fixable form-data CVE via lockfile update. Gate blocks the build on CRITICAL CVEs in npm packages we control; reports highs and Go-stdlib CVEs for triage without blocking.
 Commit: d4ee8b610221a311fe7e43628bba57036a4101f2  Status: success
+
+### 2026-08-22T16:13:00+01:00 — 142
+Instruction: Fix the supply-chain job failure on CI run 32579972335: (1) scout-action rejected 'only-severity'/'only-package-type' - correct names are plural 'only-severities'/'only-package-types'; (2) Scout via the GitHub action returned 'user githubactions not entitled to use Docker Scout' - needs Docker Hub auth on the runner. Add docker/login-action with DOCKERHUB_USER/DOCKERHUB_TOKEN repo secrets and pass Scout hub creds via env.
+Commit: 9f21cd697d400c2b0f67dcd1e47dcef111c2e1fd  Status: success
