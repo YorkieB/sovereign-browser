@@ -61,7 +61,39 @@ export function normaliseOrigin(input) {
   // which is legal in DNS and would otherwise defeat an exact comparison.
   const host = url.hostname.replace(/\.$/, '');
   if (!host) return null;
-  return { scheme: url.protocol, host };
+  return { scheme: url.protocol, host, baseHost: stripWww(host) };
+}
+
+/**
+ * www is treated as equivalent to the apex, and ONLY www. Every mainstream
+ * browser and password manager does this, because sites move between the two
+ * freely and users cannot be expected to keep an entry for each. No other
+ * subdomain is folded: login.example.com stays distinct from example.com,
+ * because services that hand out subdomains would otherwise let one tenant
+ * claim another's credentials.
+ *
+ * Only stripped when something of substance remains, so a hypothetical host of
+ * exactly "www.uk" cannot collapse to a bare suffix.
+ */
+function stripWww(host) {
+  if (!host.startsWith('www.')) return host;
+  const rest = host.slice(4);
+  return rest.split('.').length >= 2 ? rest : host;
+}
+
+/**
+ * A vault entry's URL field frequently holds SEVERAL urls - Proton exports
+ * write them comma-separated, and hand-edited entries use newlines. Parsed as
+ * one string, only the first host could ever match and the rest were dead.
+ * Splitting is conservative: newline and semicolon always, and a comma only
+ * when it separates rather than sits inside a query string.
+ */
+export function entryUrls(input) {
+  if (typeof input !== 'string') return [];
+  return input
+    .split(/[\r\n;]+|,\s*(?=https?:\/\/)|,\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 /**
@@ -72,15 +104,27 @@ export function normaliseOrigin(input) {
 export function originsMatch(pageUrl, entryUrl) {
   const page = normaliseOrigin(pageUrl);
   if (!page) return { match: false, reason: 'page origin unusable' };
-  const entry = normaliseOrigin(entryUrl);
-  if (!entry) return { match: false, reason: 'entry has no usable URL' };
 
-  if (page.host !== entry.host) return { match: false, reason: 'host mismatch' };
+  const candidates = entryUrls(entryUrl);
+  if (candidates.length === 0) return { match: false, reason: 'entry has no usable URL' };
 
-  if (entry.scheme === 'https:' && page.scheme === 'http:') {
+  let sawUsable = false;
+  let downgrade = false;
+  for (const candidate of candidates) {
+    const entry = normaliseOrigin(candidate);
+    if (!entry) continue;
+    sawUsable = true;
+    if (page.baseHost !== entry.baseHost) continue;
+    if (entry.scheme === 'https:' && page.scheme === 'http:') { downgrade = true; continue; }
+    return {
+      match: true,
+      reason: page.host === entry.host ? 'exact host match' : 'www/apex equivalent host',
+    };
+  }
+  if (downgrade) {
     return { match: false, reason: 'refusing to fill an https credential into an http page' };
   }
-  return { match: true, reason: 'exact host match' };
+  return { match: false, reason: sawUsable ? 'host mismatch' : 'entry has no usable URL' };
 }
 
 /** Filter a list of vault entries down to those valid for this page. */
